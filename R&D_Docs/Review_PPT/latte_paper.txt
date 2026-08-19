@@ -1,0 +1,2172 @@
+LLM-Powered Static Binary Taint Analysis
+PUZHUO LIU, An Group, Hangzhou, China and singhua Universiy, Beijing, China
+CHENGNIAN SUN, Universiy o Waerloo, Waerloo, Onario, Canada
+YAOWEN ZHENG, Insiue o Inormaion Engineering CAS, Beijing, China and School o Cyber
+Securiy, Universiy o he Chinese Academy o Sciences, Beijing, China
+
+XUAN FENG, Independen Researcher, Vancouver, Briish Columbia, Canada
+CHUAN QIN and YUNCHENG WANG, Insiue o Inormaion Engineering CAS, Beijing, China
+and School o Cyber Securiy, Universiy o he Chinese Academy o Sciences, Beijing, China
+
+ZHENYANG XU, Universiy o Waerloo, Waerloo, Onario, Canada
+ZHI LI, Insiue o Inormaion Engineering CAS, Beijing, China and School o Cyber Securiy, Universiy o
+
+Tis aricle proposes LATTE, he ﬁrs saic binary ain analysis ha is powered by a large language model
+(LLM). LATTE is superior o he sae o he ar (e.g., Emain, Arbier, Karone) in hree aspecs. Firs,
+LATTE is ully auomaed while prior saic binary ain analyzers need rely on human experise o manually
+cusomize ain propagaion rules and vulnerabiliy inspecion rules. Second, LATTE is signiﬁcanly eﬀecive
+in vulnerabiliy deecion, demonsraed by our comprehensive evaluaions. For example, LATTE has ound 37
+new bugs in real-world ﬁrmware, which he baselines ailed o ﬁnd. Moreover, 10 o hem have been assigned
+CVE numbers. Lasly, LATTE incurs remarkably low engineering cos, making i a cos-eﬃcien and scalable
+soluion or securiy researchers and praciioners. We srongly believe ha LATTE opens up a new direcion
+o harness he recen advance in LLMs o improve vulnerabiliy analysis or binary programs.
+Tis work was suppored by he An Group Posdocoral Programme.
+Auhors’ Conac Inormaion: Puzhuo Liu (corresponding auhor), An Group, Hangzhou, China and singhua Universiy,
+Beijing, China; e-mail: liupuzhuo.lpz@angroup.com; Chengnian Sun, Universiy o Waerloo, Waerloo, Onario, Canada;
+e-mail: cnsun@uwaerloo.ca; Yaowen Zheng, Insiue o Inormaion Engineering CAS, Beijing, China and School o Cyber
+Securiy, Universiy o he Chinese Academy o Sciences, Beijing, China; e-mail: zhengyaowen@iie.ac.cn; Xuan Feng,
+Independen Researcher, Vancouver, Briish Columbia, Canada; e-mail: xeng9209@gmail.com; Chuan in, Insiue o
+Inormaion Engineering CAS, Beijing, China and School o Cyber Securiy, Universiy o he Chinese Academy o Sciences,
+Beijing, China; e-mail: qinchuan@iie.ac.cn; Yuncheng Wang, Insiue o Inormaion Engineering CAS, Beijing, China and
+School o Cyber Securiy, Universiy o he Chinese Academy o Sciences, Beijing, China; e-mail: wangyuncheng@iie.ac.cn;
+Zhenyang Xu, Universiy o Waerloo, Waerloo, Onario, Canada; e-mail: zhenyang.xu@uwaerloo.ca; Zhi Li, Insiue
+o Inormaion Engineering CAS, Beijing, China and School o Cyber Securiy, Universiy o he Chinese Academy o
+Sciences, Beijing, China; e-mail: lizhi@iie.ac.cn; Peng Di (corresponding auhor), An Group, Hangzhou, China; e-mail:
+dipeng.dp@angroup.com; Yu Jiang, singhua Universiy, Beijing, China; e-mail: jy1989@mail.singhua.edu.cn; Limin Sun,
+Insiue o Inormaion Engineering CAS, Beijing, China and School o Cyber Securiy, Universiy o he Chinese Academy
+o Sciences, Beijing, China; e-mail: sunlimin@iie.ac.cn.
+Permission o make digial or hard copies o all or par o his work or personal or classroom use is graned wihou ee
+provided ha copies are no made or disribued or proﬁ or commercial advanage and ha copies bear his noice and he
+ull ciaion on he ﬁrs page. Copyrighs or componens o his work owned by ohers han he auhor(s) mus be honored.
+Absracing wih credi is permited. o copy oherwise, or republish, o pos on servers or o redisribue o liss, requires
+prior speciﬁc permission and/or a ee. Reques permissions rom permissions@acm.org.
+© 2025 Copyrigh held by he owner/auhor(s). Publicaion righs licensed o ACM.
+ACM 1557-7392/2025/2-AR83
+hps://doi.org/10.1145/3711816
+ACM ransacions on Soware Engineering and Mehodology, Vol. 34, No. 3, Aricle 83. Publicaion dae: February 2025.
+
+Downloaded from the ACM Digital Library on April 7, 2025.
+
+he Chinese Academy o Sciences, Beijing, China
+PENG DI, An Group, Hangzhou, China
+YU JIANG, singhua Universiy, Beijing, China
+LIMIN SUN, Insiue o Inormaion Engineering CAS, Beijing, China and School o Cyber Securiy,
+Universiy o he Chinese Academy o Sciences, Beijing, China
+
+83:2
+
+P. Liu et al.
+
+CCS Conceps: • Security and privacy → Sofware security engineering; • Sofware and its engineering
+→ Sofware pos-developmen issues;
+Addiional Key Words and Phrases: binary, ain analysis, large language model, vulnerabiliy
+
+ACM Reerence ormat:
+Puzhuo Liu, Chengnian Sun, Yaowen Zheng, Xuan Feng, Chuan in, Yuncheng Wang, Zhenyang Xu, Zhi Li,
+Peng Di, Yu Jiang, and Limin Sun. 2025. LLM-Powered Saic Binary ain Analysis. ACM rans. Sofw. Eng.
+Mehodol. 34, 3, Aricle 83 (February 2025), 36 pages.
+hps://doi.org/10.1145/3711816
+
+1
+
+Introduction
+
+ACM ransacions on Soware Engineering and Mehodology, Vol. 34, No. 3, Aricle 83. Publicaion dae: February 2025.
+
+Downloaded from the ACM Digital Library on April 7, 2025.
+
+For decades, soware esing has remained he dominan mehod or soware qualiy assurance,
+primarily due o is cos-eﬀeciveness. However, as Dijksra emphasized [19], soware esing can
+only reveal he presence o bugs, no heir absence. Consequenly, i is no uncommon o encouner
+bugs in released binaries [78, 88]. Cerain bugs can be paricularly criical and may be exploied as
+vulnerabiliies o iniiae cyberatacks, e.g., unauhorized access o sysems, sealing sensiive daa,
+and disruping normal sysem operaions [4, 41].
+o reduce he impac o vulnerabiliies in released binaries such as ﬁrmware o embedded devices
+[12, 13, 74, 103] and commercial soware applicaions [7, 33, 67, 88], hird-pary securiy audis
+emerged as an indispensable orce. Tese audis, conduced by eniies wihou access o he source
+code, apply various pos-developmen analysis [13, 52, 71, 102] and esing echniques [12, 74,
+88, 103] on he binaries. Tus, hough analysis and esing are usually applied on source code, analyzing
+and esing binaries is also an indispensable, complemenary echnique o ensure sofware reliabiliy
+and securiy.
+Saic Binary ain Analysis. Among hese analysis and esing echniques [12, 13, 103], saic
+binary ain analysis (reerred o as ain analysis or breviy in his aricle) sands ou as an eﬀecive
+approach or vulnerabiliy inspecion. I can direcly analyze binaries wih several advanages,
+including high es code coverage, independence rom he concree execuion environmen, and
+he abiliy o discover previously unknown exploiable vulnerabiliies [12, 74, 88].
+Te sandard ain analysis workﬂow comprises hree seps. 1 Ideniying ain Sources: ain
+sources are ypically uncions ha receive exernal daa. Tese exernal daa can be manipulaed by
+atackers. For example, he uncion recv reads daa hrough a socke, getenv rerieves inormaion
+rom an environmen variable, and fgets loads daa rom a ﬁle. 2 Propagaing ain Labels: Iniially,
+he exernal daa received hrough ain sources are labeled ained. Ten he analysis races he
+ﬂow o he ained daa hrough he program; i propagaes he ain labels along daa dependencies,
+such as assignmens, compuaions, and uncion calls, o discover how he ained daa spread
+hroughou he program. Meanwhile, i a memory region wih a ain label is overwriten wih
+unained daa or he region is saniized wih cerain checks, hen he ain label is removed
+rom ha memory region. 3 Ideniying and Inspecing Sinks: Sinks are poenial poins in he
+program where ained daa migh be misused or lead o securiy vulnerabiliies. Tey are usually
+sensiive operaions including manipulaing srings (e.g., strcpy, strcat), execuing commands
+(e.g., system, execl), and ormated ouputing (e.g., printf, fprintf).
+Limiaions o ain Analysis. ain analysis remains a parially auomaed process, demanding
+considerable human eﬀor or is execuion. Te eﬀeciveness o his analysis heavily relies on he
+accuracy and qualiy o rules governing ain source, ain label propagaion, and sink inspecion.
+In paricular, using ain analysis or vulnerabiliy deecion no only involves he eﬀecive propagaion o ains bu also requires seting up as complee ain checking rules as possible o reduce
+
+LLM-Powered Static Binary Taint Analysis
+
+83:3
+
+ACM ransacions on Soware Engineering and Mehodology, Vol. 34, No. 3, Aricle 83. Publicaion dae: February 2025.
+
+Downloaded from the ACM Digital Library on April 7, 2025.
+
+False Positives (FPs) and False Negatives (FNs). Regretably, designing hese rules necessiaes
+meiculous manual craing, resuling in a non-rivial and error-prone ask. Previous echniques
+[11, 12, 31, 45, 74, 88] have relied on human experise o manually deﬁne hese rules, hereby
+inroducing he risk o FPs or FNs in he analysis resuls due o poenial rule errors and absences
+[10, 45]. For insance, deermining ain sources involves ideniying uncions ha receive exernal
+daa, and esablishing he iniial ain labels requires he speciﬁcaion o hese uncions. Addiionally, he saniizaion checks ha ransorm ained daa ino sae daa in propagaion rules are
+diverse and speciﬁc o uncion semanics. Furhermore, he inspecion rules also vary based on
+he ypes o vulnerabiliies and sinks involved (urher deails in Secion 3).
+Insighs. Te limiaion o ain analysis primarily arises rom he requiremen o an in-deph
+undersanding o he semanics o he code and he vulnerabiliy patern. Exension o rules has
+hisorically imposed a signiﬁcan burden on humans when applying ain analysis o diﬀeren
+binaries or vulnerabiliies [11, 52, 88]. o overcome his limiaion, we ﬁrmly believe ha Large
+Language Models (LLMs) can provide valuable assisance, beneﬁing rom heir recen advances
+in code undersanding, including code generaion [66, 96, 99] and code summarizaion [3, 82]. LLMs
+have advanages in code-relaed asks by providing conex awareness, semanic undersanding,
+and naural language ineracion. While LLMs have heir advanages, i is essenial o noe ha
+hey are no a silver bulle. Tereore, in his aricle, we embark on he ﬁrs sudy or vulnerabiliy
+discovery ha explores he synergisic combinaion o he abiliy o LLM in code undersanding
+and he concep o ain analysis. Tis will improve he auomaion and accuracy o ain-syle
+vulnerabiliy inspecions.
+Challenge o Using LLMs. Tere are unexplored challenges in applying LLMs or vulnerabiliy
+inspecion in binaries. 1 Promp engineering: Promps play a crucial role in insrucing LLMs
+o generae responses, and heir design signiﬁcanly inﬂuences he perormance o LLMs. In he
+conex o vulnerabiliy analysis, well-consruced promps mus include he code snippes o be
+analyzed and a clear descripion o he analysis asks. However, curren LLMs have heir limiaions:
+Providing all he code snippes relaed o poenial vulnerabiliies a once or direcly insrucing
+vulnerabiliy analysis oen leads o unsaisacory resuls. Tereore, i is preerable o break
+down he relevan code snippes and vulnerabiliy analysis asks, and promp LLMs o perorm
+sep-by-sep analysis. Furhermore, he promp engineering process should be designed o be
+general, wihou requiring human inervenion whenever he program or vulnerabiliy analysis
+ask changes. 2 Encoding o code conex: o conduc accurae vulnerabiliy analysis, having
+adequae code conex, including uncion call sacks, daa dependencies, and conrol ﬂow, is
+crucial o deermine wheher a piece o code is vulnerable. However, mos LLMs currenly accep
+only a limied amoun o conex, sriking a balance beween compuaional coss and response
+qualiy. For example, he sae-o-he-ar LLM GP-4.0 suppors conexs consising o jus 32,000
+okens (approximaely 24,000 words) or boh promps and responses [64]. Consequenly, when
+dealing wih real binaries, encoding he code conex o mee his size consrain o LLMs becomes
+necessary. Analyzing he enire binary direcly is oen impracical, as he decompiled code isel
+usually surpasses his size limiaion.
+LLM-Powered Binary Taint Analyzer (LATTE). We propose LATTE, he ﬁrs echnique o
+inspec vulnerabiliies in released binaries by combining he power o LLMs and he concep
+o ain analysis. I conquers he pracical limiaions o ain analysis by harnessing he abiliy
+o LLMs in code undersanding o auomae and sreamline he manual componens o ain
+analysis, and addresses he challenges o using LLMs wih dedicaed saic analysis and promp
+engineering. Te key idea o LATTE is o consruc Prompt Sequences (PSs) driven by code slicing.
+Concreely,
+
+83:4
+
+P. Liu et al.
+
+(1) Iniially, we preprocess he binary o recover he code srucure, by perorming analysis such
+as disassembly and decompilaion.
+(2) Based on he preprocessing resuls, we use LLMs o ideniy sinks and hen deermine
+poenially Vulnerable Destinations (VDs), i.e., call sies o securiy sensiive uncions
+(sinks). Tese VDs will need o be inspeced.
+(3) Wih he ideniﬁed VDs, we perorm backward inraprocedural and inerprocedural daa
+dependency slicing o esablish uncion Call Chains (CCs) saring rom he VDs.
+(4) We consider uncion CCs involving exernal inpu daa as Dangerous Flows (DFs). o
+his end, we ﬁrs use LLMs o ideniy sources ha pass exernally conrollable daa ino he
+program and hen ideniy such CCs ha include sources.
+(5) Based on he DFs, we use uncions as unis and combine hem wih program analysis asks,
+such as ﬂow analysis, alias analysis, and ain analysis, o orm PSs. Tese PSs are generaed
+o converse wih LLMs, compleing he vulnerabiliy inspecion.
+
+— We propose LATTE, he ﬁrs echnique o leverage LLMs o power saic binary ain analysis.
+LATTE addresses he limiaions o prior ain analysis. Prior ain analyzers heavily rely
+on human experise o deﬁne rules or propagaing ain labels and inspecing sinks and
+cusomize rules or diﬀeren binaries and vulnerabiliy ypes, whereas LATTE harnesses he
+abiliy o LLMs in code undersanding o ully auomae ain analysis.
+— LATTE presens a novel soluion o address he pracical challenges o using LLMs, wih
+dedicaed muliple-sep saic analyses and auomaed promp engineering o eﬀecively elici
+LLMs o generae accurae analysis responses.
+— Comprehensive evaluaions demonsrae he eﬀeciveness o LATTE. Compared o he sae o
+he ar, LATTE achieved higher accuracy and F1 score on he sandard daase, and on he
+ﬁrmware daase, LATTE ound 117 unique bugs (including 37 previously unknown bugs wih
+10 awarded CVE numbers), a leas 21 more han he baselines.
+2
+2.1
+
+Background
+Taint-Style Vulnerability
+
+As an eﬀecive soware esing echnique, ain analysis is oen used or binary vulnerabiliy
+deecion [10–12, 31, 45, 73, 74]. ain analysis can eﬀecively ﬁnd vulnerabiliies caused by exernal
+inpus, commonly reerred o as ain-syle vulnerabiliies [98]. Neverheless, previous binary
+ain echniques [10–12, 31, 45, 73, 74] use diﬀeren names o denoe ypes o vulnerabiliies hey
+suppor. o aciliae comparison o diﬀeren echniques in a uniﬁed, sandard way, we caegorize
+ACM ransacions on Soware Engineering and Mehodology, Vol. 34, No. 3, Aricle 83. Publicaion dae: February 2025.
+
+Downloaded from the ACM Digital Library on April 7, 2025.
+
+Evaluaions. Our comprehensive evaluaions demonsrae ha LATTE signiﬁcanly ouperorms
+he sae-o-he-ar binary ain analyzers. Speciﬁcally, We ﬁrs evaluaed LATTE based on he
+ain-syle vulnerabiliy es subjecs (compiled and sripped) in he sandard daase Julie es
+Suie [23]. Te accuracy and F1 o LATTE vulnerabiliy checking exceeds Emain [12] and Arbier
+[88] on every vulnerabiliy ype. Moreover, LATTE achieved 100% correc coverage or ideniying
+sinks and sources in he es subjec arge scenario. For es subjecs labeled wih conaining
+vulnerabiliies, LATTE successully exraced more han 95% o he correc DFs ha covered he
+pahs riggering poenial vulnerabiliies. Furhermore, we assessed he eﬀeciveness o LATTE in
+real-world binaries using he embedded device ﬁrmware daase provided by Karone [74]. LATTE
+deeced a oal o 119 unique bugs, including 37 previously unknown bugs (10 CVE numbers have
+been given due o high hrea), which ouperorms he sae o he ar [12, 74, 88].
+Conribuions. We make he ollowing major conribuions:
+
+LLM-Powered Static Binary Taint Analysis
+
+83:5
+
+Fig. 1. Example of the class CWE-78.
+Table 1. Mapping between Taint-Style Vulnerability Types and CWE, Comparison of Binary
+Taint Analyzer Capabilities
+Vulnerability Type
+OS Command Injecion
+Classic Buﬀer Overﬂow
+Conrolled Forma Sring
+Ineger Overﬂow or Wraparound
+Unchecked Loop Condiion
+
+Dain [11]
+ÿ
+ÿ
+
+Binary Taint Analyzer
+Karone [74] SAC [10] FBI [45]
+ÿ
+ÿ
+ÿ
+ÿ
+ÿ
+ÿ
+ÿ
+
+Arbier [88]
+ÿa
+ÿa
+ÿ
+ÿ
+
+Emain [12]
+ÿ
+ÿ
+ÿ
+
+LATTE
+ÿ
+ÿ
+ÿ
+ÿ
+ÿ
+
+“ÿ ” means ha he corresponding ain analyzer suppors he corresponding vulnerabiliy ype.
+a indicaes ha he ain analyzer Arbier does no provide he corresponding inspecion rules and addiional engineering eﬀor is required.
+
+he vulnerabiliy ypes suppored by previous binary ain analyzers according o he Common
+Weakness Enumeration (CWE) [55].
+CWE is a communiy-developed lis o soware weakness ypes used o classiy securiy vulnerabiliies [54]. CWE is a ree-like relaionship beween weaknesses a diﬀeren levels o absracion,
+which can be divided ino pillars, classes, bases, and varians. As shown in Figure 1, he pillar (P)
+is he weaknesses described in he mos absrac way. Te class (C) is sill absrac and usually
+independen o any paricular language or echnology. Te basic (B) is used o presen more speciﬁc
+ypes o weaknesses. Te varian (V) is described a a low level o deails, usually resriced o a
+speciﬁc language or echnology.
+o ensure ha vulnerabiliy ypes do no overlap, we classiy ain-syle vulnerabiliy ypes
+according o he ollowing principles. 1 Vulnerabiliy ypes are mapped o he CWE’s basic level,
+which is used o presen speciﬁc ypes o weaknesses. I basic level does no exis, hen he varian
+level is used. 2 Classiﬁcaion is based on he cause he vulnerabiliy is riggered, regardless o
+he reason or he inroducion o ained daa. Oherwise a vulnerabiliy would have muliple
+labels. For example, i a command injecion vulnerabiliy (CWE-78) is caused by unchecked inpu
+daa, i will be classiﬁed as CWE-78, no CWE-76 (Improper Neuralizaion o Equivalen Special
+Elemens). 3 Classiﬁcaion is based on he ﬁrs reason he vulnerabiliy is riggered. For insance,
+i here is an ineger overﬂow vulnerabiliy (CWE-190) in he operaion o inpu daa, and he
+subsequen use o he operaion resul leads o a buﬀer overﬂow (CWE-680: Ineger Overﬂow o
+Buﬀer Overﬂow), we sill classiy i as CWE-190.
+able 1 liss ﬁve CWE vulnerabiliy ypes, which cover he vulnerabiliy ypes suppored by he
+previous binary ain analyzer. Previous echniques rely on human experise or heurisics o deﬁne
+ain analysis rules including ain sources, saniizers, and sinks, o propagae and inspec ained
+daa o discover ain-syle vulnerabiliies in binaries. While heoreically i is possible o apply a
+well-implemened ain engine and sound rules o inspec all ypes o vulnerabiliies in any binary,
+his is no realisic.1
+1 A ain engine is orhogonal o ain rules. A ain engine is he ool ha acually perorms ain analysis, deecing poenial
+
+securiy vulnerabiliies by racking daaﬂows. ain rules are a se o principles and logic ha guide he work o he ain
+engine, deﬁning which daa are ained and how o rack and process hese daa.
+
+ACM ransacions on Soware Engineering and Mehodology, Vol. 34, No. 3, Aricle 83. Publicaion dae: February 2025.
+
+Downloaded from the ACM Digital Library on April 7, 2025.
+
+CWE-78
+CWE-120
+CWE-134
+CWE-190
+CWE-606
+
+Saluki [31]
+ÿ
+
+83:6
+
+P. Liu et al.
+
+Firs, implemening a ain engine demands subsanial engineering eﬀor, paricularly or
+analyzing binary code. Binaries oen lack inormaion on symbols and daa ypes, and can vary
+signiﬁcanly due o diﬀerences in archiecure, compilers, and opimizaion opions. Even in decompiled code, much semanic and srucural inormaion is los or ambiguous. Consequenly,
+hese previous echniques ypically have o make cerain assumpions o develop new ain engines
+[11, 12, 31, 74, 88].
+Second, deﬁning sound ain source, saniizaion, and sink rules or exising ain engines is also
+a complex engineering ask. Mehods such as uncion absracion and machine learning can assis
+in seting relevan rules or new vulnerabiliy ypes and libraries [10, 45, 46]. However, o improve
+he accuracy o vulnerabiliy analysis and reduce he workload o pos-analysis, he complexiy
+o he rules and he demand or auomaically veriying vulnerabiliies ineviably increase. For
+example, o reduce FPs, cerain ain engines [12, 74] perorm vulnerabiliy inspecions a he sinks
+o strcpy, strncpy, and memcpy by comparing he lengh o he ain source and he size o he
+desinaion buﬀer; hese rules increase he analysis complexiy and workload, and demand more
+insighs rom exper experience.
+LLM
+
+An LLM consiss o billions o parameers and is rained on billions o samples o be highly general.
+Downsream asks can be accomplished using LLMs hrough eiher promp engineering [17, 38,
+42, 97] or ﬁne-uning [18]. In he conex o promp engineering, he downsream ask is direcly
+provided as a naural language descripion o he LLM, promping he LLM o generae a response
+o complee he ask. Unlike ﬁne-uning, which involves reraining he LLM wih addiional daa,
+promp engineering does no necessiae exra raining daa and avoids he high compuaional
+resource coss. Moreover, he LLM has been rained on exensive corpora and possess he abiliy o
+execue speciﬁc asks wih promp engineering [6, 32, 43, 51, 97]. Tereore, we chose he promp
+engineering mehod o conduc our research.
+Promp engineering is a criical process ha involves consrucing promps o elici desired
+responses rom LLMs. I plays a direc role in inﬂuencing he perormance o LLMs across various
+asks. Wih deliberaed promp engineering, LLMs have demonsraed excellen code undersanding
+capabiliies on many code-relaed asks, such as code generaion [66, 96, 99] and code summarizaion
+[3, 82]. Tese successes inspired us o explore exending he power o LLMs ino he ﬁeld o
+vulnerabiliy analysis.
+3
+
+Motivation
+
+Beneﬁing rom he rich code inormaion and communiy resources, he developmen o source
+code vulnerabiliy saic analysis ools has ar surpassed ha o binary saic analysis ools [5, 20, 27].
+Compared wih source code, in binary, even decompiled pseudocode, here is sill a lack o clear
+uncions, classes, variable names, and commens, which makes i diﬃcul o undersand speciﬁc
+uncions. able 1 demonsraes ha each prior binary ain echnique only suppors a limied se
+o ain-syle vulnerabiliy ypes. Tis limiaion arises rom he diﬃculy in manually deﬁning
+comprehensive propagaion and inspecion rules or ain analysis. Eﬀors such as SAC [10] and
+FBI [45] have atemped o opimize Karone’s [74] rules using human experise and heurisics,
+resuling in reduced FNs and FPs. However, due o he complexiy and variey o ain analysis,
+he manual-dependen naure sill hinders he overall perormance o hese binary ain analyzers.
+As shown in Figure 2, we ake he ineger overﬂow vulnerabiliy in a Decompiled Binary (DB)
+program as an example o inuiively illusrae he ollowing concree problems o designing and
+implemening eﬀecive binary ain analyzer.
+ACM ransacions on Soware Engineering and Mehodology, Vol. 34, No. 3, Aricle 83. Publicaion dae: February 2025.
+
+Downloaded from the ACM Digital Library on April 7, 2025.
+
+2.2
+
+LLM-Powered Static Binary Taint Analysis
+
+83:7
+
+3.1
+
+Problem 1. Determining Taint Sources and Initial Taint Labels
+
+Manually ideniying ain sources, which receive exernal inpu in a binary, is a laborious process,
+because no only sandard C/C++ uncions (such as recv, fscanf, fgets) bu also hird-pary
+uncions (e.g., SSL_read and BIO_read in OpenSSL) can receive exernal daa. More imporanly,
+deermining he iniial ain labels or he reurn values and parameers o he ain sources requires
+deep undersanding o he semanics o he ain sources. For example, only wih he semanics o
+fscanf can we deermine he third parameer &a o fscanf (line 4) o be ained, as &a sores he
+exernal inpu rerieved by fscanf; he ﬁrs and second parameers should no be labeled as ained.
+Noe ha i is even more challenging o deermine iniial ain labels or hird-pary uncions
+han sandard C/C++ uncions because he ormer usually do no have documenaion whereas
+he later are a leas documened in he C/C++ language sandard. Mislabeling oen leads o he
+incorrec propagaion o ain inormaion hroughou he program under analysis.
+3.2
+
+Problem 2: Defining Rules to Propagate Taint Labels
+
+Iniial ain labels are propagaed hroughou he program wih assignmens (e.g., b = a on line 5),
+calculaions (e.g., e = b+1 on line 8), and oher language consrucs, which can be auomaically
+ideniﬁed hrough daa dependency analysis. Te process o propagaing ain labels involves
+no only propagaion bu also saniizaion. In addiion o he saniizaion perormed by direcly
+assigning or copying sae (i.e., unained) daa o ained memory region (e.g., a = 1 on line 7),
+here are also saniizaion siuaions relaed o semanics. For example, checking he conen o b
+on line 10 excludes he possibiliy o overﬂow o c = b + 1 on line 14. Due o he considerable
+engineering eﬀor caused by he diversiy o saniizaion siuaions and he correlaion o code
+semanics, previous work [12, 45, 74] ignores he seting o complex saniizaion, which leads o
+considerable FPs, as discussed in [12, 49, 87].
+ACM ransacions on Soware Engineering and Mehodology, Vol. 34, No. 3, Aricle 83. Publicaion dae: February 2025.
+
+Downloaded from the ACM Digital Library on April 7, 2025.
+
+Fig. 2. Example of vulnerabilities in decompiled code (comments are added to aid understanding). When the
+user input from stdin is 126, the expected result on line 17 is 128 (the actual result is −128). Because the char
+type is signed, its range is [−128, 127]. When the result exceeds this range, an integer overflow occurs.
+
+83:8
+3.3
+
+P. Liu et al.
+Problem 3: Formulating Inspection Rules for Various Sinks and Vulnerabilities
+
+3.4
+
+Advantages of LLMs in Vulnerability Inspection
+
+Te aoremenioned speciﬁc implemenaion o he ain analysis oen requires manual eﬀors
+combined ogeher wih human experise o vulnerabiliy analysis o esablish ain rules. Comprehensive ain rules can reduce he workload o posprocessing analysis resuls, bu also increase he
+complexiy o he rules and he cos o analysis. For example, i he lengh o he ained sring wih
+he null-erminaor mees he requiremens o he desinaion buﬀer o strcpy, he ained sring
+will no cause a buﬀer overﬂow vulnerabiliy. radiional ain analysis racks he ﬂow o ain
+labels rom sources o sinks, so posprocessing o veriy alers is criical, such as bounds checking
+and value analysis.
+Forunaely, LLMs inherenly have he abiliy o human-like semanic undersanding o code,
+unlike saic or auomaed ools ha rely on predeﬁned paterns and rules. Cerain soware
+engineering asks, such as code generaion based on naural language descripions [66, 96, 99] and
+code summarizaion [3, 82], have demonsraed he superb abiliy o LLMs o undersand code.
+o inuiively illusrae he beneﬁs o LLM-assised vulnerabiliy inspecion, we show he
+vulnerabiliy analysis resuls produced by GP-4.0 or he ollowing hree code snippes wih his
+Prompt Template (PT):
+Use <function> as he ain source and mark he <parameter> parameer wih he ain label
+or ain propagaion. Deermine wheher he program has vulnerabiliies. Pay atenion o he
+buﬀer size and library uncion deﬁniion. I here is a vulnerabiliy, please explain i according
+o he CWE ype.
+where he pair (<function>, <parameter>) is replaced wih (fgets, first) or (recv, second)
+accordingly.
+Code Snippe wihou Vulnerabiliies. Te program in Figure 3 does no have any vulnerabiliy
+and GP-4 correcly produces he ollowing analysis resul:
+In he provided code snippe, using fgets as he ain source and marking he ﬁrs parameer wih
+he ain label or ain propagaion, he primary concern revolves around how daa is handled and
+ACM ransacions on Soware Engineering and Mehodology, Vol. 34, No. 3, Aricle 83. Publicaion dae: February 2025.
+
+Downloaded from the ACM Digital Library on April 7, 2025.
+
+ain analysis can discover daaﬂow sensiive vulnerabiliies caused by exernal inpus, including
+various ypes o vulnerabiliies lised in able 1. Tese vulnerabiliies can be riggered by diﬀeren
+sinks in various ways, leading o a complex many-o-many relaionship beween vulnerabiliy ypes
+and sinks. For each pair o a vulnerabiliy ype and a sink, i is oen necessary o manually ormulae
+a cusomized inspecion rule. Te process sars wih ideniying sinks, which can include no only
+sandard C/C++ uncions like printf and system bu also hird-pary uncions rom various
+libraries like BIO_printf in OpenSSL [28]. When ain analysis is applied o a new binary ha is
+linked wih diﬀeren libraries, human eﬀor is indispensable o ideniy he sinks, because sink
+ideniﬁcaion involves comprehending he behavior o uncions in he binary. Aer deermining
+sinks, inspecion rules need o be ormulaed according o he poenial vulnerabiliy ypes.
+For example, o inspec wheher he printf call on line 9 in Figure 2 can rigger a CWE-134
+vulnerabiliy, we need o check wheher he ﬁrs argumen (i.e., “%d”) o printf is ained; o
+inspec wheher he call can rigger a CWE-190 vulnerabiliy based on he ﬁrs argumen %d,
+we ﬁrs need o check wheher he second argumen (i.e., (ulong)e) o printf is ained; i yes,
+we need o urher check wheher he calculaion process o his argumen overﬂows. I is no
+scalable or pracical o depend solely on human experise and eﬀors o undersand sink uncions
+and vulnerabiliy ypes, and manually ormulae accurae and comprehensive inspecion rules
+[12, 74, 88].
+
+LLM-Powered Static Binary Taint Analysis
+
+83:9
+
+Fig. 3. A DB program that has no vulnerability.
+
+copied beween buﬀers. However, he speciﬁc use o fgets and strcpy in his conex does no
+inherenly inroduce a classic buﬀer overﬂow vulnerabiliy as migh be seen wih oher uncions
+like gets or unchecked uses o strcpy.
+Vulnerable Code Snippe wih fgets. Te program in Figure 4 is similar o Figure 3, bu has a
+buﬀer overﬂow vulnerabiliy. Te ollowing shows he correc analysis resul by GP-4:
+In his updaed code snippe, here is a clear vulnerabiliy due o he use o strcpy o copy daa
+rom a larger buﬀer a (60 byes) o a smaller buﬀer b (50 byes) wihou checking he size o he
+inpu. Tis scenario inroduces a classic buﬀer overﬂow vulnerabiliy, which can be classiﬁed
+under CWE-120: Buﬀer Copy wihou Checking Size o Inpu (Classic Buﬀer Overﬂow).
+Vulnerable Code Snippe wih recv. Te program in Figure 5 is similar o Figure 3, bu uses recv
+o receive user inpu. Te ollowing shows he correc analysis resul by GP-4:
+In he provided code snippe, he recv uncion is used as he ain source, and he second
+parameer ( a) is marked wih he ain label or ain propagaion. Tis seup inroduces a
+poenial vulnerabiliy when he daa received are copied rom buﬀer a o buﬀer b using strcpy,
+wihou checking he size o he daa being copied. Tis scenario can lead o a buﬀer overﬂow
+vulnerabiliy, speciﬁcally classiﬁed under CWE-120: Buﬀer Copy wihou Checking Size o Inpu
+(Classic Buﬀer Overﬂow).
+Based on he hree analysis resuls provided by GP-4, i is eviden ha LLMs can undersand
+and leverage deep semanic inormaion abou he code and he uncions he code calls, o perorm
+vulnerabiliy checks. Tereore, LLMs have signiﬁcan poenial o auomae cerain aspecs o
+ain analysis, a opic ha will be urher elaboraed in he remainder o his aricle.
+ACM ransacions on Soware Engineering and Mehodology, Vol. 34, No. 3, Aricle 83. Publicaion dae: February 2025.
+
+Downloaded from the ACM Digital Library on April 7, 2025.
+
+Fig. 4. A DB program, similar to Figure 3, uses fgets to receive user input (comments are added to aid
+understanding). It has a buﬀer overflow vulnerability. The reason for this program to have a buﬀer overflow
+vulnerability is that the buﬀer that fgets receives input is 60 bytes long, and strcpy may exceed the buﬀer
+b of the destination when copying.
+
+83:10
+
+P. Liu et al.
+
+Fig. 5. A vulnerable DB program that is the same as Figure 3 except using recv to receive user input instead
+of fgets (comments are added to aid understanding). The reason for this program to have a buﬀer overflow
+vulnerability is that recv does not guarantee a null-terminator, a subtle behavioral diﬀerence from fgets.
+
+4
+
+Overview of LATTE
+
+ACM ransacions on Soware Engineering and Mehodology, Vol. 34, No. 3, Aricle 83. Publicaion dae: February 2025.
+
+Downloaded from the ACM Digital Library on April 7, 2025.
+
+We propose LATTE, a novel approach ha leverages he code undersanding capabiliies o LLMs
+o assis in ain analysis or ideniying poenial vulnerabiliies in binaries. Tis approach raises
+he key Research Qestion (R): How can we pracically and eﬀecively prepare promps o guide
+LLMs in perorming vulnerabiliy inspecion? Eﬀecive promps mus provide LLMs wih suﬃcien
+code conex and clear analysis insrucions. However, achieving his requires overcoming wo
+main challenges.
+Challenge 1: Large Code Size and Complexiy vs. Limied oken Conex o LLMs. Te size and
+complexiy o binary code make i impracical o direcly eed an enire binary program o LLMs or
+analysis. LLMs have limis on he number o okens and he amoun o conex hey can process.
+When hese limis are exceeded, LLMs may lose rack o previously analyzed inormaion, aﬀecing
+subsequen code analysis. Even wihou hese inpu limiaions, eﬀecively inspecing vulnerabiliies
+across he enire codebase o a real-world soware projec remains a dauning challenge.
+Soluion o Challenge 1. Incorporaing he principles o ain analysis, we exrac DFs or LLMs
+o analyze. By slicing he program, we reduce he analysis complexiy or LLMs. Tis mehod
+employs ain analysis principles o conduc dependency analysis on dangerous daa relaed o he
+program’s exernal inpu. However, unlike radiional ain analysis, we do no perorm saniizaion
+and vulnerabiliy inspecions; insead, we ocus solely on exracing DFs. A DF is deﬁned as a slice
+o uncions involved in daa dependencies beween he exernal daa inpu uncion and poenial
+desinaions ha could lead o vulnerabiliies (see Secions 5.1 and 5.2). Trough his process, muliple
+DFs can be exraced rom he program, orming a superse o poenial vulnerabiliies. Tis approach
+pariions he analysis space or LLMs, reducing he overhead o complex ain analysis algorihms
+and minimizing he risk o FNs. Te exraced DFs provide LLMs wih relevan and conexually
+concise inpu, enhancing he accuracy and eﬃciency o vulnerabiliy analysis.
+Challenge 2: Obscuriy o Vulnerabiliy Discovery vs. Generaliy o Insrucions or LLMs. Vulnerabiliy discovery inherenly involves exploring he unknown. Insrucing LLMs o perorm similariy
+analysis based on known vulnerabiliies limis he abiliy o LLMs o deec unknown vulnerabiliies. Addiionally, i is impracical o provide examples o all possible vulnerabiliy paterns in he
+promp and use ew-sho learning or analysis [16]. Te insrucions or vulnerabiliy checking
+described in he promp should remain general, requiring no addiional eﬀor when he code or
+vulnerabiliy ypes change.
+Soluion o Challenge 2. Inspired by he idea o manual code audiing ha usually splis a vulnerabiliy analysis ask ino muliple smaller sub-asks, we insruc LLMs o analyze he DF sep by sep
+in a similar manner. When manually audiing code, we oen use uncions as unis o gradually
+undersand he enire program. In addiion, manual audis oen deermine wheher vulnerabiliies
+
+LLM-Powered Static Binary Taint Analysis
+
+83:11
+
+Fig. 6. Workflow of LATTE.
+
+4.1
+
+Workflow of LATTE
+
+LATTE uilizes he idea o code slicing and ask spliting o build promps o insruc LLMs or
+vulnerabiliy inspecion. Te overall workﬂow o LATTE is depiced in Figure 6, primarily comprising hree modules. Firs, we preprocess he inpu binary using disassembly and decompilaion
+echniques. Tis module provides he recovered code srucures or urher analysis. In he second
+module, we slice he DFs o he decompiled program, exracing relevan code snippes involving
+daa dependencies beween exernal inpus and VDs. For each DF, we generae he corresponding
+PS ha insrucs he LLM. Ten, he hird module uses he generaed PS o engage in a conversaion
+wih he LLM o sep-by-sep guide he DF analysis or discovering vulnerabiliies.
+Te code slicing and promp consrucion module serve as he core o LATTE. We urher explain
+he hree phases o his module.
+Phase 1: Funcion CC Exracion. In his phase, we begin by ideniying VDs (i.e., call sies o sinks)
+wihin he binary. o achieve his, we uilize he LLM o analyze each exernal uncion o ideniy
+sinks and heir relaed parameers, which may poenially rigger vulnerabiliies. We consider he
+calls o hese sinks as he VDs. Nex, we conduc backward daa dependency analysis, encompassing
+boh inraprocedural and inerprocedural aspecs, saring rom each VD. Tis analysis helps us
+reconsruc he uncion CCs leading o hese VDs (deails in Secion 5.1). Funcion CCs are deﬁned
+as below.
+Deﬁniion 4.1 (CC). A CC is a sequence o uncions [푓1, 푓2, · · · , 푓푛 ], where 푓푛 conains a VD and
+∀푖 ∈ [1, 푛) : 푓푖 calls 푓푖+1 .
+Phase 2: DF Generaion. Te second phase ocuses on ideniying exernal inpu sources and
+maching hem o he previously generaed uncion CCs o generae DFs. o achieve his, we
+once again rely on he LLM o ideniy sources rom exernal uncions and deermine heir calls.
+Ten, we mach he caller o he sources wihin he uncion CCs. I he caller exiss in a chain,
+we consider he chain as a Candidate DF (CDF) whose saring poin is he caller. By applying a
+ACM ransacions on Soware Engineering and Mehodology, Vol. 34, No. 3, Aricle 83. Publicaion dae: February 2025.
+
+Downloaded from the ACM Digital Library on April 7, 2025.
+
+exis in a general way by undersanding he deﬁniion o uncions and he processing ﬂow o
+daa, raher han ﬁnding similariies hrough speciﬁc vulnerabiliy examples. Tereore, aking he
+uncions in he DF as unis, we consruc a comprehensive PS corresponding o he DF, which
+speciﬁes he daa source o carry ou daaﬂow racing and vulnerabiliy inspecion (see Secion 5.3).
+Tis PS allows LLMs o complee he vulnerabiliy analysis o he DF in he orm o a conversaion.
+Consequenly, LLMs can explore and discover vulnerabiliies more eﬀecively, even in scenarios
+wih diﬀeren binaries or vulnerabiliy ypes.
+
+83:12
+
+P. Liu et al.
+
+sequence-sensiive ﬁlering process, we eliminae repeaed ﬂows among candidae CDFs, resuling
+in a se o disinc DFs (deails in Secion 5.2).
+Deﬁniion 4.2 (DF). A DF is a CC = [푓1, 푓2, · · · , 푓푛 ], where 푓1 conains a leas one call o a ain
+source, 푓푖 (1 < 푖 ≤ 푛) may conain calls o ain sources, 푓푛 conains a VD, and he exernal daa
+obained rom any o he ain sources called on he chain can possibly ﬂow o he VD.
+Phase 3: PS Consrucion. Te hird phase involves consrucing PSs by combining he ideniﬁed
+DFs wih speciﬁc analysis asks. For each DF, we creae he corresponding PS using uncions as
+unis. o be applicable o various binaries, we design hree Ps o complee he consrucion o
+promps. Te ﬁrs P is used o iniiae a conversaion, which combines wih he ﬁrs uncion
+in he ﬂow o clariy he source o analysis, and insrucs he LLM o perorm daa aliasing, daa
+dependency, and ain analysis. We hen use a second emplae combined wih each uncion in he
+DF o recursively consruc promps or daaﬂow analysis unil reaching he end o he DF. Te las
+promp insrucs he LLM o iniiae he ﬁnal vulnerabiliy analysis (deails in Secion 5.3).
+LATTE Design
+
+We inroduce a novel echnique or PS consrucion based on DF analysis, which enables LLMs o
+conduc eﬀecive vulnerabiliy inspecions in binaries. DFs are obained by perorming backward
+daa dependency slicing rom calls o sinks and maching sources. Te analysis o DFs ocuses
+solely on daa dependency analysis and does no involve ain saniaion or vulnerabiliy inspecion.
+Based on he exraced DFs, combined wih he ask o program analysis, he LLM inspecs DFs or
+poenial vulnerabiliies. Combined wih Algorihm 1, we nex explain he speciﬁc design o he
+program slicing and promp consrucion process.
+5.1
+
+Function CC Extraction
+
+In he uncion CC exracion phase, we ocus on exracing uncion CCs ha are relevan o
+poenial vulnerabiliies in he binary. Tis process involves wo main seps: ideniﬁcaion o VDs
+and backward slicing.
+5.1.1 Identification of VDs. Te ﬁrs sep is o ﬁnd he call sies o sinks wihin he binary. o
+inspec all poenial vulnerabiliies, we need o locae all sinks presen in he binary. Sinks oen
+depend on exernal libraries linked o he binary, as menioned in Secion 3. o ideniy sinks, we
+leverage he power o he LLM. Speciﬁcally, we exrac exernally linked uncions rom he DB
+ino a lis named Fexternal . For dynamically linked libraries, he names o exernal uncions are
+preserved in he uncion able o he binary, so we can provide he uncion names o he LLM or
+analysis. For saically linked libraries, he body o he uncion is included in he binary. We uilize
+he LLM or code summary analysis o he exernal library uncion o ideniy sinks. As shown
+in Figure 7, we ake dynamic linking as an example o illusrae his process. Te orm o saic
+linking is jus o replace he uncion name wih he uncion body. Te promp ﬁrs assigns he
+program analys persona, because he role seting perorms beter in saisical resuls [93]. Ten,
+he promp clearly describes he purpose o he analysis, i.e., deermine wheher he uncion can
+be used as a sink in ain analysis. Moreover, we use he one-sho approach o give an example
+o sandardize he oupu o LLMs. Te oupu o LLMs is no necessarily compleely accurae or
+sable. We can remove he “wihou addiional explanaion” indicaion in he promp o use he
+descripion o he uncion in he response o assis in he judgmen o sinks. For any uncions 푓
+ha is deermined o be a sink, we sore he pair (푓 ; Para) o he uncion name and parameer
+ha needs o be checked, ino a se named sinks on line 5 in Algorihm 1 or subsequen use. I is
+worh noing ha he analysis resuls o (sink; Para) can be reused i anoher binary uses he same
+ACM ransacions on Soware Engineering and Mehodology, Vol. 34, No. 3, Aricle 83. Publicaion dae: February 2025.
+
+Downloaded from the ACM Digital Library on April 7, 2025.
+
+5
+
+LLM-Powered Static Binary Taint Analysis
+
+83:13
+
+Algorithm 1: Program Slicing and Promp Consrucion.
+Input: DB: decompiled binary
+Input: PTs: promp emplaes
+Output: PSs: promp sequences or vulnerabiliy inspecion
+// Funcion Call Chain Generaion
+
+Fexternal ← ExtractExternalFunc(DB)
+sinks ← ∅
+3 oreach  ∈ Fexternal do
+4
+i LLM hinks 푓 is a ain sink wih he parameer(s) Para causing he vulnerabiliy then
+5
+sinks ← sinks ∪ {(푓 ; Para)}
+1
+2
+
+vulnerable desinaions VDs ← ∅
+oreach (sink; Para) ∈ sinks do
+8
+callsies ← ﬁnd all he call sies o sink
+9
+oreach Loc ∈ callsies do
+10
+Arg ← ﬁnd he acual argumen or he parameer Para
+11
+VDs ← VDs ∪ {(Loc; sink; Arg)}
+6
+7
+
+13
+
+// Dangerous Flow Generaion
+
+sources ← ∅
+oreach  ∈ Fexternal do
+18
+i LLM hinks 푓 is a ain source wih he parameer(s) Para soring exernal daa then
+19
+sources ← sources ∪ {(푓 ; Para)}
+
+16
+17
+
+candidae dangerous ﬂows CDFs ← ∅
+dangerous ﬂows DFs ← ∅
+22 oreach CC ∈ CCs do
+23
+i he source o sources exiss in CC and has daa dependency wih he VD then
+24
+CDF ← change he saring uncion o he caller o source
+25
+CDFs ← CDFs ∪ CDF
+20
+21
+
+26
+
+DFs ← Deduplicate (CDFs)
+
+// Promp Sequence Consrucion
+
+promp sequences PSs ← ∅
+oreach DF ∈ DFs do
+29
+PS ← ConstructPromptSeq (PTs, DF)
+30
+PSs ← PSs ∪ PS
+
+27
+28
+
+31
+
+reurn PSs
+
+dynamic library. Tis analysis is only necessary when he binary uses a diﬀeren dynamic library
+ha has no been analyzed beore.
+Te oupu resul is a se o pairs (sink; Para), as shown on line 5 in Algorihm 1. For example,
+(printf; 1), (printf; 2), · · · indicae ha every parameer o he printf uncion needs o
+be checked or poenial vulnerabiliies. Aer ideniying he sinks and he corresponding Para,
+we raverse he binary o locae he call sies o each sink, orming he VD lis o he riple
+ACM ransacions on Soware Engineering and Mehodology, Vol. 34, No. 3, Aricle 83. Publicaion dae: February 2025.
+
+Downloaded from the ACM Digital Library on April 7, 2025.
+
+call chains CCs ← ∅
+oreach VD 푖푛 VDs do
+14
+CC1, CC2, ... ← BackwardSlicing (DB, VD)
+15
+CCs ← CCs ∪ {CC1, CC2, ...}
+
+12
+
+83:14
+
+P. Liu et al.
+
+(Loc; sink; Arg). For example, he ﬁrs parameer in he printf calls in Figure 2 is a consan
+and does no need o be checked, so Figure 2 conains hree VDs: (9; printf; e), (15; printf;
+c), and (18; printf; d).
+5.1.2 Backward Slicing. Te second sep, backward slicing, involves obaining he operaions
+perormed on he VD’s argumens beore he call o he sink. Tis sep relies on boh inraprocedural
+and inerprocedural daaﬂow analyses. We adop a deph-ﬁrs backward approach o raverse he
+call graph and analyze daaﬂows backward rom each VD = (Loc; sink; Arg) o generae CCs, as
+shown on lines 12–15 in Algorihm 1.
+LATTE relies on Ghidra [62] o perorm call graph analysis. Speciﬁcally, we obain he address o
+each uncion2 by raversing he uncions ideniﬁed by Ghidra. Ten, call and jump insrucions
+are ound in each uncion, and he memory addresses used in hese insrucions are mached
+wih he uncion addresses o ideniy he relaionship beween callers and callees and urher
+build he call graph. Based on he call graph, we ﬁrs perorm ﬂow-insensiive and pah-insensiive
+inraprocedural daa dependency analysis wihin he uncion 푓 where VD is locaed. For loops
+wihin 푓 , i duplicae pahs are ound, he loop is exied. In addiion, we perorm poiner alias
+analysis wih he help o variable descripion deﬁniions and addressing mehods [11]. I direc
+daa dependencies are deeced beween he VD’s vulnerabiliy rigger-relaed argumens (i.e., arg)
+and he 푓 ’s parameers, we exend our analysis o an inerprocedural level. Te calling conex is
+considered by recording he uncion names o diﬀeren callers o orm muliple CCs. Tereore,
+we recursively analyze he dependencies unil here are no dependencies on caller parameers or
+no caller. o manage he complexiy o recursive calls and pah explosion, we limi he conex call
+deph o 50. Finally, we add he CCs corresponding o diﬀeren VDs o he se CCs.
+We use an example o demonsrae he above analysis process. CCs, as shown in Figure 8, show
+a parial call graph, where he library uncion system is he sink. Te VD = (10; system; a) is in
+fun1, and we iniialize is CC = [fun1]. Tere is a daa dependency beween a and para2 o fun1.
+So we coninue o analyze he call sies o un1 and updae CCs o {[fun2, fun1], [fun3, fun1]}. In
+fun3, he argumen corresponding o he parameer para2 o fun1 is 푏, and 푏 has a daa dependency
+wih para2 o fun3. Tereore, we coninue o analyze he callers o fun3 unil here is no caller or
+no dependency on he parameers.
+2 A uncion address reers o he memory locaion where he code o he uncion begins in memory.
+
+ACM ransacions on Soware Engineering and Mehodology, Vol. 34, No. 3, Aricle 83. Publicaion dae: February 2025.
+
+Downloaded from the ACM Digital Library on April 7, 2025.
+
+Fig. 7. Use GPT-4.0 to identify sinks.
+
+LLM-Powered Static Binary Taint Analysis
+
+83:15
+
+5.2
+
+DF Generation
+
+In he DF generaion phase, our goal is o ideniy CCs in which exernal inpu can reach a VD.
+Tis process involves wo main seps: We ﬁrs need o ideniy he exernal inpu source in he
+program and hen perorm maching and deduplicaion in CCs o deermine DFs.
+5.2.1 Source Identification. Te ﬁrs sep is o ideniy sources in he binary. Similar o he
+ideniﬁcaion o sinks in Secion 5.1.1, we also uilize he LLM or his ask. In his case, he analysis
+ask is changed o ﬁnd uncions ha can direcly receive exernal inpus. We exrac exernal link
+uncions in he binary and provide he uncion name or uncion body so ha LLM can perorm
+auxiliary analysis o deermine wheher he uncion can be used as a ain source. For any uncion
+푓 ha is deermined o be a source, we sore he pair (푓 ; Para) o he uncion name and parameer
+ha needs o be checked ino a se named sources on line 5 in Algorihm 1 or subsequen use.
+For insance, Figure 9 indicaes ha he fscanf uncion is used as he source, and he second
+parameer sores he exernal inpu daa. Obviously, his response is no enirely accurae. Exernal
+inpu should be sored in he corresponding poiner parameer aer he orma sring. Tereore,
+we need o make correcions based on sligh exper experience. We use (fscanf; > 2) o indicae
+ha we need o analyze he parameers aer he second parameer o he fscanf uncion. Like
+he ideniﬁcaion o sinks, he source ideniﬁcaion resuls can also be reused or diﬀeren binaries
+ha uses he same dynamic library.
+5.2.2 Matching and Deduplication. Wih he ideniﬁed se o sources {(source; Para)}, we proceed o mach hem in he exraced CCs o ideniy DFs. Speciﬁcally, or each CC, we check
+wheher he uncion 푓 o he CC call he ideniﬁed sources. I so, we urher analyze wheher he
+argumen corresponding o Para o he source overlaps wih he daaﬂow o he VD. I here is
+overlap, he uncions rom 푓 o he end in he CC are considered a CDF. As a CC may generae
+ACM ransacions on Soware Engineering and Mehodology, Vol. 34, No. 3, Aricle 83. Publicaion dae: February 2025.
+
+Downloaded from the ACM Digital Library on April 7, 2025.
+
+Fig. 8. An example call graph of a program, where each node is a function definition. Black arrows represent
+function call relationships. Blue arrows represent data dependency relationships. The figure directly shows
+the two CCs of VD = (10; system; a), namely, {[fun2, fun1], [· · · , fun3, fun1]}.
+
+83:16
+
+P. Liu et al.
+
+muliple CDFs due o muliple sources, we only keep he longes CDF wihin he same CC. Addiionally, diﬀeren CCs may produce he same CDF or subchain. o avoid redundancy and reduce
+unnecessary inspecion requess, we ﬁler ou CDFs ha are subchains o oher CDFs. Finally, we
+obain a se o DFs or he nex sep o consruc PSs.
+We use CCs = {[fun2, fun1], [· · · , fun3, fun1]} in Figure 8 o illusrae he above process. In fun2, he ain source fgets is called and he ﬁrs argumen a has a daa dependency wih he argumen b o func1 (he snprintf in line 18 o Figure 8 sores a in b).
+Tereore, [fun2, fun1] is a CDF. We assume ha CC = [· · · , fun3, fun1] orms {[fun5,
+fun4, fun3, fun1], [fun6, fun4, fun3, fun1]} aer he recursive analysis. I he ain source is called
+in fun4 and fun6, he corresponding CDFs is {[fun4, fun3, fun1], [fun6, fun4, fun3, fun1]}. Bu
+[fun4, fun3, fun1] is a subchain o [fun6, fun4, fun3, fun1], so he ormer is discarded. Te ﬁnal
+DFs are {[fun2, fun1], [fun6, fun4, fun2, fun1]}.
+5.3
+
+PS Construction
+
+In he PS consrucion phase, our objecive is o creae PSs ha insruc he LLM o perorm
+vulnerabiliy inspecion based on ideniﬁed DFs. o ensure ha he PS eﬀecively insrucs he LLM
+and remains valid and eﬀecive or diﬀeren, diverse programs, we propose PTs ha are applicable
+o all DFs and can be insaniaed o ﬁ each DF. We ollow a rigorous ieraion and opimizaion
+process ha ranged rom iniial promp design o esing and eedback analysis. Te ﬁnal Ps
+include he ollowing key elemens or eﬀecive analysis:
+— Clearly sae he analysis asks. Precise insrucions or vulnerabiliy analysis are essenial o
+preven irrelevan conen.
+— Enrich he conex o asks. Addiional insrucions relaed o vulnerabiliy analysis, such as
+alias analysis and ocusing on ained daaﬂows, enhance accuracy.
+— Persona assignmen. Assigning appropriae roles improves he proessionalism o LLMs in
+responding o descripions.
+— Spliting o analysis asks or daa. For large daa o be analyzed, spliting or preprocessing he
+daa helps improve accuracy.
+— Te speciﬁed oupu orma. Te deermined oupu orma aciliaes analysis or downsream
+asks.
+ACM ransacions on Soware Engineering and Mehodology, Vol. 34, No. 3, Aricle 83. Publicaion dae: February 2025.
+
+Downloaded from the ACM Digital Library on April 7, 2025.
+
+Fig. 9. Use GPT-4.0 to identify sources.
+
+LLM-Powered Static Binary Taint Analysis
+
+83:17
+
+According o hese elemens, we design hree emplaes shown in Figure 10. Te Ps are inspired
+by he general approach o manual code audiing. Speciﬁcally, daa dependency analysis sars
+rom he uncion conaining he exernal daa source and progresses hrough he uncion CC
+unil he las uncion in he DF. I a DF conains only one uncion, hen he PS or i includes
+a sar promp and an end promp. For a DF consising o more han one uncion, he middle
+emplae is used recursively o complee he PS consrucion. Tis srucured approach ensures
+ha LAE perorms vulnerabiliy analysis eﬀecively and consisenly across diﬀeren scenarios.
+Te deailed explanaion o PTs design is as ollows.
+Sar emplae (Figure 10(a)). Iniializes he analysis by speciying he ask and conex clearly.
+Te sar promp assigns he persona o he LLM and explains he analysis background and asks.
+Speciﬁcally, we insruc he LLM o conduc he ollowing conversion in he role o program analys.
+Ten, we clariy he ain source o program analysis. For example, or he DF = [fun2, fun1]
+shown in Figure 8, he pair (<function>, <parameter>) in Figure 10(a) is replaced wih (fgets,
+first). A he same ime, he body o ﬁrs uncion fun2 is appended a he end o he promp or
+analysis. In he descripion o he analysis ask, we mainly ocus on he propagaion o ained daa,
+so we emphasize he analysis o daa dependencies. o conduc more accurae analysis, we also
+emphasize he ocus on daa aliases and ained daa operaions.
+Middle emplae (Figure 10(b)). Recursively used o handle inermediae seps in he DF, enriching
+he conex and ocusing on relevan daaﬂows. Speciﬁcally, he middle promps are reused o
+describe uncions in a DF oher han he ﬁrs uncion. Tanks o he shor-erm memory capabiliy
+ACM ransacions on Soware Engineering and Mehodology, Vol. 34, No. 3, Aricle 83. Publicaion dae: February 2025.
+
+Downloaded from the ACM Digital Library on April 7, 2025.
+
+Fig. 10. The PTs for constructing the PS that instruct the LLM to inspect vulnerabilities.
+
+83:18
+
+P. Liu et al.
+
+6
+
+Evaluation
+
+Te evaluaions o LATTE are designed o address he ollowing ﬁve Rs:
+RQ1: How well does LATTE inspec vulnerabiliies in binaries? Explain rom he ollowing hree
+perspecives:
+(1) How eﬀecive is LATTE in ideniying securiy vulnerabiliies?
+(2) How sable is LATTE in vulnerabiliy inspecion resul?
+(3) How eﬃcien is LATTE in erms o processing ime and moneary cos?
+RQ2: How eﬀecive is he ideniﬁcaion o securiy sensiive uncions (sinks) and exernal inpu
+sources (sources)?
+RQ3: How eﬀecive is he exracion o DFs?
+RQ4: Wha is he perormance impac o PS on LATTE?
+RQ5: Does LATTE scale o real-world binary vulnerabiliy analysis?
+6.1
+
+Evaluation Setup
+
+Implemenaion. Te implemenaion o LATTE is based on he reverse engineering ramework
+Ghidra [62, 76] and he LLM GP-4.0 [63]. Below, we ouline he overall implemenaion process.
+Te ﬁrs sep involves loading he arge binary ino Ghidra, where he cusom Ghidra plugin is
+uilized o auomae exracion asks. Trough he plugin, LAE rerieves criical inormaion
+rom he binary, such as decompiled code, he call graph, conrol ﬂow graph, impor able, and
+addiional meadaa necessary or in-deph analysis. Once he binary daa are colleced, LAE
+conducs deailed program analysis o exrac DFs ha are relevan o vulnerabiliy riggering. Using
+predeﬁned Ps, LAE consrucs PSs ha correspond o each DF. Each PS is speciﬁcally designed
+o inerac wih GP-4.0, seting up a session in which he LLM conducs a vulnerabiliy assessmen
+ACM ransacions on Soware Engineering and Mehodology, Vol. 34, No. 3, Aricle 83. Publicaion dae: February 2025.
+
+Downloaded from the ACM Digital Library on April 7, 2025.
+
+o he LLM isel, we can complee daa dependency analysis beween uncions. Tereore, he
+middle promp needs o indicae ha he ain analysis is coninued based on he analysis resuls o
+he previous uncion. Similarly, we pu he uncion body o be analyzed a he end o he promp.
+For example, or he DF = [fun2, fun1] shown in Figure 8, he body o uncion fun1 is appended
+a he end o he promp or analysis. Moreover, i here is a source in he curren uncion, we ﬁll
+in he source name and he corresponding parameer a <function> and <parameter> as in he
+sar emplae. Oherwise, ain propagaion analysis is perormed based on he analysis resuls o
+he previous uncion and he promp does no include he conen in parenheses (i.e., “(Noe he
+new ain source … as he ain label.” in Figure 10(b)).
+End emplae (Figure 10(c)). Concludes he analysis, ensuring ha all necessary inormaion is
+capured and ormated correcly. Speciﬁcally he end emplae is used aer all uncions in have
+been analyzed. Te main ask o he end emplae is o perorm vulnerabiliy inspecion based on
+he analysis resuls o all DF uncions. A he same ime, o aciliae vulnerabiliy ideniﬁcaion and
+analysis, we also le he end emplae classiy vulnerabiliies based on CWE. I is worh menioning
+ha his no only provides a more deailed vulnerabiliy analysis descripion, bu also provides
+paching suggesions based on he code conex.
+Assuming ha he DF only conains he foo uncion in Figure 2, he running example o LATTE
+insrucing he LLM o perorm vulnerabiliy analysis is shown in Figure 11. Firs, he oupu o
+LLM clearly describes he ain propagaion process. Te model hen gives he locaion and reason
+why he vulnerabiliy was riggered in he oupu o he vulnerabiliy analysis. Tereore, we can
+no only see he vulnerabiliy check resuls bu also urher veriy he vulnerabiliy or pach he
+vulnerabiliy based on he analysis process in he response o LLMs.
+
+LLM-Powered Static Binary Taint Analysis
+
+83:19
+
+Downloaded from the ACM Digital Library on April 7, 2025.
+
+Fig. 11. Based on the foo function in Figure 2, the process of using GPT-4.0 to analyze and check bugs is
+shown. The final model output correctly identifies that the 푑 = 푐 + 1 operation of the foo has a potential
+integer overflow vulnerability.
+
+o he associaed DF. As GP-4.0 processes each PS, i evaluaes he corresponding DF or poenial
+vulnerabiliy issues. Once he analysis across all DFs wihin a binary is compleed, LAE saves
+he resuls generaed by GP-4.0. Tese resuls, sored as individual ﬁles, are organized or urher
+veriﬁcaion and validaion, supporing a comprehensive review o any ideniﬁed vulnerabiliies.
+Benchmarks. o horoughly and airly evaluae he capabiliies o LATTE, we used he Julie es
+Suie [23] and Karone daase [74]. We ﬁrs seleced he benchmarks included in he sandard
+daase Julie es Suie (v1.3) according o able 1 o evaluae R1–R4 (Julie has no benchmarks
+or CWE-120 and we used he Karone daase or CWE-120). o ensure ha our evaluaion
+ACM ransacions on Soware Engineering and Mehodology, Vol. 34, No. 3, Aricle 83. Publicaion dae: February 2025.
+
+83:20
+
+P. Liu et al.
+Table 2. Evaluation Results of Vulnerability Inspection Based on Juliet
+
+P
+FN
+N
+FP
+Accuracy
+Precision
+Recall
+F1 score
+Avg. ime (seconds)
+
+CWE-78 (960/960)a
+Emain Arbier LATTE
+820
+408
+892
+140
+552
+68
+960
+960
+430
+0
+530
+0
+92.7%
+43.64% 96.46%
+100%
+100%
+43.5%
+85.42%
+42.5%
+92.92%
+92.14%
+43.25% 96.33%
+13.5
+5.2
+122
+
+CWE-134 (1,200/1,200)a
+Emain Arbier LATTE
+1,115
+1,166
+1,151
+85
+34
+49
+1,132
+30
+1,102
+68
+1,170
+98
+93.63%
+49.83% 93.88%
+94.25%
+49.91% 92.15%
+92.92%
+97.17% 95.92%
+93.58%
+65.95% 93.99%
+5.6
+73.6
+14.2
+
+CWE-190 (2,860/2,860)a
+Emain Arbierb LATTE
+5
+2,091
+1,773
+5
+769
+1,087
+5
+444
+1,779
+5
+2,416
+1,081
+5
+44.32%
+62.1%
+5
+46.39%
+61.12%
+5
+74.68%
+68.19%
+5
+56.76%
+62.05%
+5
+7.8
+15.1
+
+CWE-606 (240/240)a
+Emain Arbier LATTE
+5
+5
+210
+5
+5
+30
+5
+5
+142
+5
+5
+98
+5
+5
+73.33%
+5
+5
+65.26%
+5
+5
+87.5%
+5
+5
+74.24%
+5
+5
+13.9
+
+5 indicaes ha he vulnerabiliy ype is no suppored.
+a Number o es subjecs conaining vulnerabiliies/Number o es subjecs no conaining vulnerabiliies.
+b Arbier relies on symbol able, such as printIntLine, printHexCharLine, and printLongLongLine, o assis in overﬂow judgmen. I
+LATTE is also analyzed based on he binary wih he symbol able, P is 2,576, FN is 284, N is 1,939, FP is 921, Precision is 73.66%, Accuracy
+is 78.93%, Recall is 92%, F1 is 81.04%.
+
+6.2
+
+Vulnerability Inspection (RQ1)
+
+6.2.1 Eﬀectiveness. LATTE perorms vulnerabiliy inspecion on sripped binaries compiled rom
+Julie. Te name o he es subjec describes he CWE vulnerabiliy ypes i conains. However,
+here are overlaps beween CWE vulnerabiliy ypes (Secion 2.1). o aciliae he veriﬁcaion o
+he resuls, we only deermine wheher he CWE vulnerabiliy ype speciﬁed by he es subjec
+exiss. In evaluaing LATTE, we perormed ﬁve rounds o esing o ensure robusness and accuracy.
+As shown in able 2, he inspecion accuracies o he our ypes o vulnerabiliies CWE-78, CWE134, CWE-190, and CWE-606 are 96.46%, 93.88%, 62.1%, and 73.33%, respecively, and he average
+accuracy is 77%.
+LATTE ouperorms boh Emain and Arbier, in erms o accuracy and F1 score. Noe ha in he
+case o CWE-190 (Ineger Overﬂow or Wraparound), Arbier can deec 318 more Ps han LATTE.
+ACM ransacions on Soware Engineering and Mehodology, Vol. 34, No. 3, Aricle 83. Publicaion dae: February 2025.
+
+Downloaded from the ACM Digital Library on April 7, 2025.
+
+mirrors real-world scenarios, we removed debug inormaion and symbol ables rom he compiled
+benchmark programs. Furhermore, since LATTE aims o deec vulnerabiliies caused by exernal
+inpus, es subjecs wih inernal daa as a source have been removed. Te number o es subjecs
+used or evaluaion is lised in able 2. Second, we perormed R5 evaluaion on real ﬁrmware
+daase provided by Karone o illusrae LATTE’s abiliy o ﬁnd vulnerabiliies in he real world.
+Since he source code o ﬁrmware in Karone is no publicly accessible, and hus no in he raining
+ses o LLMs. Te evaluaion on Karone helps o invesigae wheher LATTE suﬀers rom he daa
+leakage problem [94].
+Baselines. We seleced Emain [12] and Arbier [88] or comparison on he Julie es Suie.
+Tese echniques represen he sae o he ar as shown in able 1. For he Karone daase, we
+used Karone [74] as anoher baseline or comparison, because Karone is designed speciﬁcally or
+analyzing ﬁrmware. We did no include CodeL [27], QeryX [33], or Joern [29] as baselines due
+o heir reliance on cusomized queries or bug deecion [33].
+Merics. In he evaluaion based on he Julie es Suie, we measured he eﬀeciveness o LATTE
+P+N
+using six indicaors: True Positive (TP), FN, True Negative (TN), FP, accuracy ( P+N+FP+FN
+),
+2∗precision∗recall
+P
+P
+and F1 score ( precision+recall , where precision = P+FP , recall = P+FN ). For he evaluaion on he
+real-world ﬁrmware daase provided by Karone, since here are no labels, we mainly measured
+he P and FP in he analysis alers.
+Running Environmen. All experimens were perormed on a Linux worksaion wih an Inel
+Core i7-8750H CPU and 64 G RAM.
+
+LLM-Powered Static Binary Taint Analysis
+
+83:21
+
+Table 3. Comparison of
+Vulnerability Checking Accuracy
+of LATTE Based on GPT-4.0
+and GPT-3.5
+
+CWE-78
+CWE-134
+CWE-190
+CWE-606
+Average
+
+GP-4.0
+96.46%
+93.88%
+62.1%
+73.33%
+81.44%
+
+GP-3.5
+78.2%
+75.9%
+54.5%
+61.2%
+67.45%
+
+6.2.2 Stability. As an ariﬁcial inelligence generaion model, GP-4.0 exhibis a cerain degree
+o randomness in he generaed response. Te emperaure parameer plays a signiﬁcan role
+in conrolling he creaiviy and diversiy o he conen produced by GP-4.0. Te emperaure
+value is a ﬂoaing-poin number beween 0 and 1, where higher values resul in more diverse and
+random oupus, while lower values produce more conservaive and deerminisic oupus. We
+conduced wo ses o experimens o evaluae he sabiliy o LATTE analysis resuls and he eﬀec
+o emperaure on he resuls.
+Analysis Sabiliy a emperaure 0.5. o srike a balance beween creaiviy and sabiliy, we
+used a median emperaure value o 0.5 in he ﬁve rounds o esing in Secion 6.2.1. We measured
+he sabiliy by evaluaing he inersecion o Ps among he ﬁve rounds. Figure 12 shows small
+ﬂucuaions in he number o Ps in diﬀeren rounds o he same CWE ype. From le o righ
+in Figure 12, he recall raes o ﬁve-round inersecion are 90.42%, 88.42%, 58.04%, and 82.5%,
+respecively (he average recall rae is 79.85%). Tis indicaes ha he sabiliy o LATTE is accepable.
+However, we noiced relaively large ﬂucuaions in he CWE-190. Te reason or he ﬂucuaion
+o CWE-190 is consisen wih he problem menioned above (Secion 6.2.1), which is caused by
+incorrec daa ype judgmens wihou he assisance o uncion names.
+ACM ransacions on Soware Engineering and Mehodology, Vol. 34, No. 3, Aricle 83. Publicaion dae: February 2025.
+
+Downloaded from the ACM Digital Library on April 7, 2025.
+
+However, his is atribued o he ac ha Arbier relies on he symbol able or inspecion, and i
+his inormaion is provided o LATTE, LATTE can ouperorm Arbier by deecing 485 more Ps.
+Analysis o FNs and FPs. We urher analyzed he reasons behind FNs and FPs in LATTE vulnerabiliy checks. Te ﬁrs reason is ha he DFs o es subjecs are no always correcly exraced.
+Tis may occur due o program analysis problems, such as indirec calls and poiner aliases, which
+can lead o alse or ailed exracion o DFs (deails in Secion 6.4). Te second reason is relaed o
+he creaiviy o GP-4.0 which can lead o diﬀeren responses o he same PS, resuling in unsable
+analysis resuls. However, he vulnerabiliy inspecion ask isel has he propery o exploraion
+raher han simple rule maching. Tereore, he insabiliy brough abou by he creaiviy o
+GP-4.0 is no necessarily bad or vulnerabiliy inspecion. We urher analyzed he sabiliy o he
+LATTE resul (deails in Secion 6.2.2).
+GP-4.0 vs. GP-3.5. LATTE based on GP-4.0 can perorm eﬀecive ain-syle vulnerabiliy
+inspecion. We urher used GP-3.5 o conduc an ablaion experimen on he model. able 3 shows
+ha LATTE based on GP-4.0 perorms beter han GP-3.5 on each vulnerabiliy ype. Te average
+accuracy o LATTE based on GP-4.0 is beter han ha o GP-3.5 13.99%. Tis illusraes ha he
+abiliy o he model isel direcly aﬀecs he analysis eﬀec o LATTE. Wih he developmen o
+LLMs, he eﬀeciveness o vulnerabiliy checks will also increase. Te design o LATTE allows easy
+swiching beween diﬀeren LLMs.
+
+83:22
+
+P. Liu et al.
+
+Fig. 13. Accuracy of CWE-78 analysis for LATTE at diﬀerent temperatures.
+
+Impac o emperaure on Analyical Resuls. o explore he impac o emperaure on LATTE,
+we conduced 11 experimens wih diﬀeren emperaure values. Each experimen was perormed
+ﬁve rounds o ensure reliabiliy. Figure 13 shows he accuracy resuls o CWE-78, where he rend
+generally ollows a normal disribuion, including he median, minimum, and maximum values.
+Moreover, we observe ha when he emperaure is less han 0.4, he inspecion resuls have a
+smaller disribuion range. Conversely, when he emperaure is greaer han 0.6, he inspecion
+resuls are more scatered. Te emperaure o 0.4–0.6 can achieve a balance beween sabiliy
+and inspecion eﬀec. Similar rends were observed or he analysis o CWE-134, CWE-190, and
+CWE-606.
+6.2.3 Eﬀiciency. We analyzed he ime overhead and he moneary cos o LATTE when inspecing or vulnerabiliies. Tis process reers o he overhead o binary loading, DF exracion,
+ACM ransacions on Soware Engineering and Mehodology, Vol. 34, No. 3, Aricle 83. Publicaion dae: February 2025.
+
+Downloaded from the ACM Digital Library on April 7, 2025.
+
+Fig. 12. The TP intersection among the five test rounds indicates the stability of LATTE. The intersection
+numbers of the four vulnerability types are 868, 1,061, 1,660, and 198.
+
+LLM-Powered Static Binary Taint Analysis
+
+83:23
+
+Answer o RQ1: Te average accuracy o LATTE vulnerabiliy inspecion is 77%. Compared
+o he sae-o-he-ar echniques Emain and Arbier, LATTE ouperorms hem in diﬀeren
+vulnerabiliy ypes. Moreover, he average recall o he P inersecion across diﬀeren es
+rounds is 79.85%, which shows ha he inspecion resuls o LATTE are sable.
+6.3
+
+Sink and Source Identification (RQ2)
+
+LATTE reasonably ideniﬁed sinks and sources as necessary or DF exracion. As shown in able 4,
+we veriﬁed he resuls o sink and source ideniﬁed by LATTE. For each es subjec, he vulnerabiliy
+is riggered by a speciﬁc pair o sink and source, such as system and recv. Te expeced pair o
+he es subjec is indicaed by is name. LATTE accuraely covers boh he sink and source o he
+arge scenario in he es subjec wih 100%. Te ime overhead or ideniying sinks and sources
+is proporional o he number o library uncions. For he es subjec in Julie, 48 queries were
+required, wih each query aking approximaely 1 second. Furhermore, hese resuls can be cached
+or all es subjecs rom Julie wihou he need or urher queries.
+Tere are oher uncions in a es subjec ha can be used as sinks and sources, bu hey do no
+cause a vulnerabiliy in he curren es subjec. Te ideniﬁed uncions can be used as sinks and
+sources wih average precision up o 82.1%. FPs are mainly atribued o he insabiliy o GP-4.0.
+For example, someimes recv is misakenly reaed as an sink. Tis highlighs he challenge o
+managing he creaiviy and diversiy o he LLM, which can someimes resul in uninended
+oucomes. o alleviae his siuaion, we can analyze uncion semanics o ﬁler FPs and uilize Ps
+o orm sink and source collecions o assis analysis. When evaluaing real programs in Secion 6.6,
+we use he correc sink and source resuls ideniﬁed rom he es subjecs o analysis.
+Compared wih he sae-o-he-ar binary ain analysis echniques, such as Emain and Arbier,
+LATTE improves he auomaion o ain analysis. Previous echniques primarily relied on manual
+analysis o uncion semanics o ideniy sinks and sources, making i diﬃcul o compare ideniﬁcaion resuls. However, he abiliy o LLMs o undersand code and generae uncion summaries
+can be used o assis manual analysis and reduce manual eﬀor. LATTE simpliﬁes he analysis
+process and improve he eﬃciency o exising echniques by providing analyss wih more program
+inormaion.
+ACM ransacions on Soware Engineering and Mehodology, Vol. 34, No. 3, Aricle 83. Publicaion dae: February 2025.
+
+Downloaded from the ACM Digital Library on April 7, 2025.
+
+and conversaion wih GP-4.0 or vulnerabiliy inspecing. Source and sink resuls can be reused
+beween diﬀeren binaries so hey are preconﬁgured (evaluaed in Secion 6.3).
+Te average ime aken o analyze diﬀeren es subjecs is summarized in able 2. Te resuls
+indicae ha LATTE can complee he analysis o a es subjec wihin 20 seconds. Preprocessing
+he es subjec and exracing he DFs akes abou 2 seconds, which is a relaively eﬃcien process.
+Te majoriy o he analysis ime is spen on he conversaion wih GP-4.0, as his sep involves
+insrucing he model and waiing or is response. Te ime aken or his sep can be inﬂuenced by
+nework qualiy and he response speed o GP-4.0. Comparing LATTE wih Emain and Arbier,
+we ﬁnd ha he ime overhead o LATTE is slighly greaer han ha o Emain, wih a diﬀerence
+o abou 8 seconds. Tis diﬀerence is considered accepable given he auomaion ha comes wih
+using GP-4.0.
+Regarding he moneary cos, he evaluaed cos o LATTE analyzing a DF is $0.35, which is
+considered accepable compared o he expendiure o hiring a program analysis exper or manual
+inspecion. Moreover, wih he developmen o LLM echnology, he cos o using such models is
+expeced o decrease over ime, while he perormance is likely o improve, making i an even more
+atracive opion or vulnerabiliy analysis.
+
+LLM-Powered Static Binary Taint Analysis
+
+83:25
+
+Answer o RQ3: LATTE successully and correcly exracs DFs covering more han 95 o
+es subjecs conaining poenial vulnerabiliies. Tis demonsraes he abiliy o LATTE o
+eﬀecively exrac DFs.
+6.5
+
+PS Construction (RQ4)
+
+o evaluae he eﬀeciveness o PS consrucion, we designed ﬁve ses o comparaive experimens
+based on he acors ha aﬀec promp consrucion: code slicing granulariy and analysis ask
+descripion granulariy. Speciﬁcally, keeping he same analysis ask descripion as LATTE, we
+perorm promp consrucion on 1 he enire program and 2 he enire DF, respecively. Moreover,
+we consruc PSs based on more ﬁne-grained slicing, ha is, 3 only reaining he code lines relaed
+o he daa dependency o he sink rigger argumen. For analysis ask descripion, we use uncions
+in DF as unis o consruc PS consisen wih LATTE, bu we 4 cancel he persona assignmen
+(i.e., he ﬁrs promp in PS does no indicae ha he conversaion will be conduced in he role o a
+program analys) and 5 do no spli asks (i.e., direcly insruc he GP-4.0 o perorm vulnerabiliy
+analysis wihou menioning subasks such as ain analysis and daa dependency analysis).
+Based on he above principles, we consruc corresponding promps (or PSs) or vulnerabiliy
+analysis on he es subjecs in able 2. As shown in Figure 15, LATTE ouperorms he oher ﬁve
+mehods. Moreover, he p-values or he comparison pairs calculaed using he Mann-Whiney
+U es [83] shown in able 5 are all less han 0.05, indicaing ha he comparison resuls are
+saisically signiﬁcan. Speciﬁcally, LATTE ouperorms he approach on larger-grained slices
+(he enire program and he enire DF) and smaller-grained slices (code lines involved in ained
+daa) by an average accuracy o 28.7%, 13.3%, and 46.4%, respecively. In large-granulariy slices,
+he enire DF is also beter han he enire program wih an average accuracy o 15.4%, which
+shows ha direcly providing a large number o code snippes a one ime leads o a decrease
+in analysis accuracy. For smaller-grained slicing, GP-4.0 produced responses ha vulnerabiliy
+ACM ransacions on Soware Engineering and Mehodology, Vol. 34, No. 3, Aricle 83. Publicaion dae: February 2025.
+
+Downloaded from the ACM Digital Library on April 7, 2025.
+
+Fig. 15. Comparison of the impact of PS construction on vulnerability analysis.
+
+83:26
+
+P. Liu et al.
+Table 5. The p-Values Calculated by Mann-Whitney U Test to Illustrate the
+Statistical Significance of LATTE and Comparative Sets
+
+CWE-78
+CWE-134
+CWE-190
+CWE-606
+
+Enire Program
+
+Enire DF
+
+Code Line
+
+0.008
+0.008
+0.008
+0.008
+
+0.008
+0.008
+0.008
+0.008
+
+0.008
+0.008
+0.008
+0.008
+
+No Persona
+Assignmen
+0.008
+0.012
+0.008
+0.012
+
+No ask
+Spliting
+0.012
+0.012
+0.012
+0.012
+
+Table 6. Vulnerability Inspection Results Based on Real-World Firmware Dataset Collected by Karonte
+Samples
+
+NEGEAR
+D-Link
+P-Link
+enda
+oal
+
+17
+9
+16
+7
+49
+
+Alerts
+
+TP
+
+36
+24
+2
+12
+74
+
+23
+15
+2
+6
+46
+
+Karonte
+Unique
+FP
+Bugs
+13 19
+9
+10
+0
+2
+6
+6
+28 37
+
+Avg.
+Time
+17:13
+14:09
+01:30
+01:01
+451:06
+
+Alerts
+849
+299
+73
+362
+1,583
+
+Emtaint
+Unique
+FP
+Bugs
+849
+0
+47
+234
+65 29
+73
+0
+3
+362
+0
+19
+1,518 65 98
+TP
+
+Avg.
+Time
+00:05
+00:02
+00:05
+00:05
+03:38
+
+Alerts
+131
+99
+21
+49
+300
+
+Arbiter
+Unique
+FP
+Bugs
+63 68 26
+48 51 14
+18 3
+6
+22 27 6
+151 149 52
+TP
+
+Avg.
+Time
+02:20
+03:18
+02:40
+03:25
+135:57
+
+Alerts
+142
+65
+29
+19
+255
+
+LATTE
+Unique
+FP
+Bugs
+124 18 54
+59 6
+42
+23 6
+10
+16 3
+13
+222 33 119
+TP
+
+Avg.
+Time
+00:38
+00:21
+00:33
+00:29
+26:06
+
+Alers: he number o bugs considered by he echnique.
+P: he vulnerabiliy rigger locaion is reachable by user-conrollable daa.
+FP: he vulnerabiliy rigger locaion is unreachable or no caused by user-conrollable daa.
+Unique Bugs: diﬀeren pairs o user-conrollable daa receiving locaions and vulnerabiliy riggering locaions in Ps.
+Avg. ime: average ime spen analyzing a ﬁrmware represened by hh:mm.
+
+analysis canno be perormed due o lack o suﬃcien conex. Tis is due o he lack o associaed
+code snippes ha preven synax analysis such as daaﬂow and conrol ﬂow. Regarding he ask
+descripion granulariy, LATTE perorms beter han he mehod wihou persona assignmen and
+ask spliting, wih an average accuracy improvemen o 2.78% and 6.4%, respecively. Compared
+o he granulariy o code slicing, changes in he ask descripion have a relaively small impac
+on he accuracy o he resuls. Te main reason is ha he LLM isel has suﬃcien undersanding
+capabiliy o reason and undersand according o he ask requiremens, so persona assignmen or
+ask spliting does no have a signiﬁcan impac on he resuls. However, providing richer conex
+is sill helpul or ask undersanding.
+Answer o RQ4: Compared wih promps (promp sequences) consruced based on diﬀeren
+code slicing granulariiesand analysis ask descripion granulariies,LATTE demonsraes
+higher accuracy in deecing binary vulnerabiliies.
+6.6
+
+Real-World Vulnerability Inspection (RQ5)
+
+R1–R4 evaluaions demonsraed he vulnerabiliy analysis capabiliies o LATTE on sandard
+daases. o urher illusrae LATTE’s abiliy o analyze unknown and real-world daa, we evaluaed
+LATTE on 49 embedded device ﬁrmware samples rom Karone. LAE issued a oal o 255 alers
+or 3,678 DFs. As shown in able 6, he 255 alers ound aer veriﬁcaion include 222 Ps o which
+here are 119 unique CWE-78 and CWE-120 bugs.
+LATTE ouperorms advanced binary ain analysis echniques. Karone and Arbier ound 46
+and 151 Ps, respecively, while LATTE ound 222 Ps. Moreover, LATTE’s precision 87.1% is higher
+han Karone’s 62.16% and Arbier’s 48.67%. For analysis ime, Karone and Arbier rely on he
+heavyweigh echnique symbolic execuion, so LATTE spends 425 and 109 minues less ime on
+analysis, respecively. Alhough Emain ound 1,296 more Ps han LATTE, many o Ps were he
+same bugs caused by diﬀeren daaﬂows. I akes a lo o work or analyss o veriy he resuls.
+ACM ransacions on Soware Engineering and Mehodology, Vol. 34, No. 3, Aricle 83. Publicaion dae: February 2025.
+
+Downloaded from the ACM Digital Library on April 7, 2025.
+
+Vendor
+
+LLM-Powered Static Binary Taint Analysis
+
+83:27
+
+Fig. 16. Unique bugs discovered by diﬀerent tools.
+
+Answer o RQ5: LATTE eﬀecively ound 119 unique bugs (including 37 previously unknown
+bugs)in he real-world ﬁrmware daase,ouperorming he sae-o-he-ar echniques
+Karone, Emain, and Arbier.
+7
+7.1
+
+Discussion
+Limitations on Vulnerability Types
+
+LATTE aces challenges in handling cerain ypes o vulnerabiliies, such as logic vulnerabiliies [57],
+race condiion vulnerabiliies [58], and vulnerabiliies involving complex mahemaical calculaions
+[56, 69]. Tese vulnerabiliies oen involve inricae code snippes wih complex nesing and
+jumping, making hem diﬃcul or he LLM o eﬀecively analyze. Tereore, he under/overaining problem is prone o occur. Moreover, hese vulnerabiliies are also diﬃcul o deec
+by using ain analysis alone. Complex vulnerabiliies require he exracion o more conex
+inormaion such as resource locks, inerrup vecor ables, shared memory addresses, and so on
+o assis in analysis. Collecing more valuable conex inormaion and providing i o LLMs or
+vulnerabiliy analysis is a direcion worhy o urher research.
+7.2
+
+Limitations on Binary Analysis
+
+LATTE implemens binary analysis based on Ghidra [62], including reverse engineering, uncion
+srucure recovery, and calling relaionship analysis. Ghidra provides relaively complee analysis
+algorihms and APIs or developers o use.
+However, binary analysis isel is inherenly complex and poses several challenges [52]. Many
+issues remain parially or enirely unsolved. For example, Ghidra’s analysis can sruggle o deermine when wo poiners reer o he same memory locaion, leading o poenial inaccuracies in
+daaﬂow racking and alias analysis. Addiionally, Ghidra someimes has diﬃculy resolving virual
+calls, which can obscure he rue calling relaionships in he binary. Tis limiaion is especially
+problemaic in C++ programs wih exensive use o polymorphism, where he inabiliy o accuraely
+resolve virual calls can hinder he undersanding o conrol ﬂow and daa dependencies. LLM
+ACM ransacions on Soware Engineering and Mehodology, Vol. 34, No. 3, Aricle 83. Publicaion dae: February 2025.
+
+Downloaded from the ACM Digital Library on April 7, 2025.
+
+As shown in Figure 16, he unique bugs ound by LATTE cover he resuls o Karone and Arbier,
+while 16 unique bugs ound by Emain were no ound by LATTE. Te reason is ha he poiner
+alias in LATTE is no accurae, resuling in no relaionship beween variables poining o he same
+memory. Tereore, he CC exraced by LATTE is incomplee, causing he corresponding DF o be
+missed. However, LATTE ound 119 unique bugs, 21 more han Emain. Moreover, LATTE ound 37
+previously unknown bugs, and 10 CVE numbers have been obained due o he high hrea.
+
+83:28
+
+P. Liu et al.
+
+excels a ideniying paterns in code and daaﬂow, and i would be worh exploring urher in he
+uure o assis in ideniying common indirec conrol ﬂow paterns.
+Moreover, when he compiler inlines a uncion, he original boundary beween he caller uncion
+and he callee uncion is eliminaed, making i diﬃcul o reconsruc he original uncion srucure
+and undersand he precise calling relaionship. Forunaely, i a callee is inlined, he caller becomes
+larger by incorporaing he implemenaion o he callee. Tereore, i does no aﬀec he analysis
+o he code wih LLMs. Moreover, uncion inlining aﬀecs he ideniﬁcaion o saically linked
+source and sink uncions. Bu in mos cases, he source and sink are provided by he sysem library
+[31, 88]. In order o ensure he size and compaibiliy o he program, he sysem library is usually
+dynamically linked, e.g., glibc [74, 88].
+7.3
+
+Importance of Metrics for Evaluating Vulnerability Analysis
+
+7.4
+
+Impact of Binary Protection on LATTE
+
+LATTE perorms binary analysis based on he inermediae represenaion P-Code o Ghidra,
+enabling binary analysis across diﬀeren archiecures such as X86, X64, ARM, and MIPS. Consisen
+wih oher binary vulnerabiliy analysis echniques [10, 12, 74, 88], LATTE canno direcly analyze
+binaries ha have been obuscaed or encryped. Addiional seps are needed o ensure he binary
+can be processed by Ghidra. Tere is ongoing research ocused on deobuscaion and decrypion,
+which can aid subsequen vulnerabiliy analysis [25, 48, 86, 89].
+Moreover, he perormance o LATTE was evaluaed on binaries lacking debugging inormaion,
+symbol ables, and commens. Maliciously ampered semanics can inerere wih LATTE’s analysis.
+For example, renaming a uncion conaining a vulnerabiliy o “no_vulnerabiliy” migh increase
+he likelihood o misjudgmen. However, by insrucing LLMs o ignore such semanic inormaion,
+he impac can be signiﬁcanly reduced. Oﬀensive and deensive echniques in binary analysis
+ACM ransacions on Soware Engineering and Mehodology, Vol. 34, No. 3, Aricle 83. Publicaion dae: February 2025.
+
+Downloaded from the ACM Digital Library on April 7, 2025.
+
+Precision and recall are wo key merics or real program vulnerabiliy analysis. Analyical mehods
+oen require a balance beween FPs and FNs [88]. Precise analysis algorihms can reduce FPs, bu
+may overlook diverse poenial vulnerabiliies, hus increasing FNs. Conversely, over-approximaion
+analysis algorihms may ideniy more poenial vulnerabiliies, bu also increase he number o
+FPs. Tereore, securiy engineers need o choose he appropriae mehod based on speciﬁc analysis
+conexs and objecives. Furhermore, ideniying unique bugs is crucial or boh precision and recall
+merics. Duplicae Ps no only add no value o securiy analysis bu also increase he overhead
+involved in validaing vulnerabiliies [12, 74].
+Te ollowing guidelines provide ool selecion recommendaions based on analysis coss, business scenarios, and securiy requiremen sandards [36, 50, 61]. Te recall score is paricularly
+imporan when resources such as ime and labor are suﬃcien. Addiionally, using high-recall ools
+o ﬁnd as many vulnerabiliies as possible is especially useul in he early sages or when reviewing
+new code. On he oher hand, when dealing wih a large number o subjecs and limied resources,
+securiy engineers should prioriize high-precision ools o ensure ha repored vulnerabiliies are
+genuine, hus minimizing he ime spen on FPs. For sysems requiring sringen securiy measures,
+use a combinaion o ools o balance precision and recall, ensuring comprehensive coverage and
+accurae ideniﬁcaion o vulnerabiliies.
+According o he evaluaion resuls in Secion 6.2.1, LATTE ouperorms oher ools in boh o
+precision and recall. Meanwhile, LATTE ound more unique bugs in he evaluaion o real ﬁrmwares
+in Secion 6.6, and covered he bug resuls o Arbier and Karone. Based on he above guidelines,
+engineers should give prioriy o LAE. However, he cos o LLM okens or using LATTE is
+unavoidable. Tereore, i engineers have suﬃcien oken resources, LATTE is recommended o be
+used over radiional mehods.
+
+LLM-Powered Static Binary Taint Analysis
+
+83:29
+
+remain an ongoing challenge, and our ﬁndings conribue o undersanding he capabiliies and
+limiaions o LLMs in his conex.
+7.5
+
+Identification of Sources and Sinks
+
+7.6
+
+Applicability to Source Code
+
+While LATTE is designed or vulnerabiliy analysis o binary code, is underlying concep is
+adapable or source code analysis as well. I source code analysis is required, hree componens
+o he LATTE workﬂow (oulined in Figure 6) would need adjusmen. Firs, source code analysis
+bypasses he need or disassembly or decompilaion, allowing or direc code analysis o ideniy
+DFs. Second, he algorihm or exracing DFs mus be modiﬁed o work wih source code. For
+example, in decompiled code, he analysis relies on regisers and memory addresses, whereas, in
+source code, i ocuses on variable analysis. Furhermore, binary code ypically inegraes all calling
+relaionships and dependencies ino a single ﬁle, while source code requires parsing dependencies
+across muliple ﬁles. Tird, he Ps need o be opimized. Te sar emplae in binary analysis saes
+ha he code is “generaed by decompilaion,” which provides helpul conex. When analyzing
+source code, removing his saemen or indicaing ha he code is source code can help LLMs
+analyze he source code more direcly, beneﬁing rom explici variable names and commens.
+Providing addiional descripive inormaion urher aids LLMs in analyzing he code eﬀecively.
+o demonsrae he easibiliy o he concep o LATTE or source code, we uilized SVF [81] o
+exrac DFs rom he source code o he Julie es cases (Secion 6) and removed he “generaed by
+decompilaion” saemen rom he sar promp. As shown in able 7, he accuracy o deecing
+vulnerabiliies in source code or CWE-78, CWE-134, CWE-190, and CWE-606 improved by 1.64%,
+2.91%, 17.9%, and 5.07%, respecively, compared o sripped binary analysis. Te p-values or
+hese comparisons, calculaed using he Mann-Whiney U es, were all less han 0.1, indicaing
+saisical signiﬁcance. Tis improvemen resuls rom he semanic clariy in source code, wih
+ACM ransacions on Soware Engineering and Mehodology, Vol. 34, No. 3, Aricle 83. Publicaion dae: February 2025.
+
+Downloaded from the ACM Digital Library on April 7, 2025.
+
+Te speciﬁcaion o sources and sinks is necessary o iniiae LATTE analysis. I he analys already
+has he ideniﬁed sources and sinks, he source and sink ideniﬁcaion sage can be skipped and
+DF exracion and PS consrucion can be perormed direcly by seting he sources and sinks. I
+no, he analys can use LATTE o help ideniy sources and sinks. We evaluaed source and sink
+ideniﬁcaion based on he Julie es suie in Secion 6.3. Te ideniﬁcaion resuls o sources and
+sinks can be reused i anoher binary uses he same dynamic library. We conduced vulnerabiliy
+inspecions using hese ideniﬁcaion resuls in real-world ﬁrmwares in Secion 6.6.
+In he real world, ideniying sources and sinks is a complex problem. Firs, real programs require
+more queries due o he presence o various linked libraries. For example, he glibc requires abou
+3,000–4,000 queries, and he OpenGL requires several hundred queries. Tereore, even wih LATTE
+o assis in ideniying sources and sinks or caching, i requires a cerain amoun o ime overhead.
+Second, as described in Secion 7.2, alhough mos binary programs use dynamic linking, saic
+linking and inlining make i more diﬃcul o ideniy sources and sinks. LATTE needs o be combined
+wih program analysis echniques such as code summarizaion and dynamic analysis o urher
+deermine he source and sink. Tird, some cusom uncions in real-world binaries may also be
+used as ained sources and sinks [46], which urher complicaes he ideniﬁcaion o sources and
+sinks. LLMs can recognize well-known uncions like recv and printf, is perormance is limied
+when encounering previously unseen uncions. Meanwhile, he hallucinaion o LLMs seriously
+aﬀecs he ideniﬁcaion o sources and sinks. Coninuously reﬁning and opimizing promps or
+models based on exper eedback, code inormaion, and speciﬁcaion daa is criical o meeing he
+challenges o various libraries and cusom uncions.
+
+83:30
+
+P. Liu et al.
+Table 7. Comparison of Vulnerability Checking Accuracy on Source Code
+and Decompiled Code
+
+CWE-78
+CWE-134
+CWE-190
+CWE-606
+
+Sripped Binary
+96.46%
+93.88%
+62.1%
+73.33%
+
+Source Code
+98.1%
+96.9%
+80%
+78.4%
+
+Improvemen
+1.64%
+3.02%
+17.9%
+5.07%
+
+p-Value
+0.095
+0.008
+0.008
+0.004
+
+8
+
+Related Work
+
+ain Analysis. ain analysis is a soware securiy analysis mehod ha aims o ideniy and
+analyze poenial securiy vulnerabiliies in programs. I is widely used or analysis in source
+code, Web applicaions, and Android programs. VulSlicer [75] and FICS [2] perormed daaﬂow
+analysis on he source and sink pairs in he source code. Merlin [47], Tomé e al. [85], and JOZA
+[60] summarized ariﬁcial experience ino rules and used heurisic mehods o discover ain-syle
+vulnerabiliy in Web applicaions. DroidSae [30], SCANDAL [39], and AndroidLeaks [26] ideniﬁed
+some API calls or callback uncions as ain sources in Android programs o perorm ain analysis.
+Te main diﬀerence beween ain analysis o binary programs and he above program ypes is he
+loss o inormaion such as program semanics and code srucure. Tereore, when implemening a
+binary ain analysis engine, more exper experience and more manual work are required. Speciﬁc
+binary ain analysis echniques are inroduced in he nex paragraph.
+Binary Vulnerabiliy Analysis. For vulnerabiliy analysis o binary, here are boh dynamic and
+saic echniques. Dynamic echniques monior unexpeced behaviors o es arges as hey execue
+es cases, such as uzzing [8, 22, 44, 77, 103], concolic execuion [15, 68, 80, 101], and emulaion
+analysis [14, 21, 35, 40, 53]. Te resuls o dynamic analysis are reliable, bu he es code coverage
+is low and he es execuion depends on he speciﬁc operaing environmen. Binary execuion
+environmens vary depending on he operaing sysem, archiecure, and even peripherals. As
+a resul, he applicaion and perormance o dynamic analysis is oen limied. Saic analysis
+echniques are suiable or binary analysis due o heir high code es coverage and no limied
+o he execuion environmen. BooSomp [73], Saluki [31], Dain [11], Karone [74], SAC [10],
+Arbier [88], and Emain [12] echniques primarily leverage ain analysis combined wih program
+analysis, symbol execuion, and machine learning o analyze binary vulnerabiliies. However, hese
+mehods commonly rely on human experience o deﬁne propagaion and inspecion rules. LATTE,
+on he oher hand, is he ﬁrs o propose a ain analysis echnique combined wih LLMs or binary
+vulnerabiliy inspecion, oﬀering a novel approach ha avoids he need or manual rule deﬁniion.
+LLM-Assised Code Analysis. Te LLM is a class o deep learning models ha have signiﬁcanly
+impaced naural language processing. In recen years, wih he excellen code undersanding
+abiliy o LLMs, hey have been widely applied in code-relaed asks, such as code generaion
+ACM ransacions on Soware Engineering and Mehodology, Vol. 34, No. 3, Aricle 83. Publicaion dae: February 2025.
+
+Downloaded from the ACM Digital Library on April 7, 2025.
+
+uncion names, variable names, and ype deﬁniions providing criical conex ha aids LLMs in
+undersanding and analyzing vulnerabiliies.
+However, when combined wih LLMs, here may be more eﬀecive approaches han LAE
+or source code analysis. For insance, inegraing LLMs wih advanced program analysis ools
+such as CodeL [34, 84, 90] could provide a more comprehensive undersanding o code srucure
+and semanics. Addiionally, poiner analysis and oher echniques could be applied direcly o
+source code, raher han decompiled code, o urher enhance he accuracy and eﬀeciveness o
+vulnerabiliy deecion.
+
+LLM-Powered Static Binary Taint Analysis
+
+83:31
+
+9
+
+Conclusion
+
+Tis aricle proposes LATTE, he ﬁrs LLM-powered saic binary ain analysis. radiional ain
+analyzers rely on human experise o manually deﬁne paterns and rules, and his manual naure
+severely limis he eﬀeciveness and perormance o he ain analysis echnique. LATTE perorms
+DF slicing by slicing VDs back o exernal inpu sources. LATTE hen combines code snippes o consruc PSs, leveraging LLMs’ conex-aware assisance and human-like undersanding capabiliies
+or code vulnerabiliy inspecion. Based on he subsanial evaluaions, LATTE ouperorms he sae
+o he ar across all ain-syle vulnerabiliy ypes, such as buﬀer overﬂow and command injecion.
+LATTE sheds ligh on he combinaion o program analysis and LLMs or vulnerabiliy analysis.
+Acknowledgment
+We hank he anonymous reviewers or heir valuable commens o improve our aricle.
+References
+[1] Wasi Ahmad, Saika Chakrabory, Baishakhi Ray, and Kai-Wei Chang. 2021. Uniﬁed pre-raining or program
+undersanding and generaion. In Proceedings o he 2021 Conerence o he Norh American Chaper o he Associaion
+or Compuaional Linguisics: Human Language echnologies, 2655–2668. Associaion or Compuaional Linguisics.
+Rerieved rom hps://www.aclweb.org/anhology/2021.naacl-main.211
+ACM ransacions on Soware Engineering and Mehodology, Vol. 34, No. 3, Aricle 83. Publicaion dae: February 2025.
+
+Downloaded from the ACM Digital Library on April 7, 2025.
+
+[1, 24, 65, 100], pach generaion [70, 79, 95, 96], and code summarizaion [3]. For code vulnerabiliy
+analysis, i is oen necessary o combine various program analysis echniques on he basis o LLMs’
+code undersanding o conduc eﬀecive vulnerabiliy audiing. For insance, FuzzGP [18] and
+ianFuzz [17] uilize he LLM o analyze exising code snippes and generae es cases o assis in
+API uzzing. CODAMOSA [42] uses he LLM o analyze code coverage inormaion and modiy
+es cases o improve es coverage. Moreover, LLMDFA [91], inspired by summary-based daaﬂow
+analysis, inroduced he daaﬂow analysis ramework suppored by LLM and explored he idea
+o LLM-assised source code analysis. LLMSAN [92] urher used he ideas o ew-sho chain-ohough and program properies o reduce he impac o LLM hallucinaion on he reliabiliy o
+daaﬂow analysis. Unlike hese LLM-assised analysis echniques, LATTE uilizes he LLM o assis
+saic analysis and works on binaries ha provide less code inormaion han source code.
+Securiy Slicing. Obaining code snippes rom a program or vulnerabiliy analysis is a popular
+securiy analysis mehod. o reduce he ime overhead o veriying warnings and improve inspecion
+accuracy, he resuls o code slicing are oen combined wih oher analysis and esing echniques
+or urher veriﬁcaion. FuzzSlice [59] and Helium [37] used saic analysis echnology o consruc
+compilable harnesses rom source code slices, which are hen subjeced o vulnerabiliy veriﬁcaion
+hrough uzzing. SFuzz [9] implemened uzzing on independen code snippes exraced rom
+real-ime operaing sysems binaries. Tese echniques mus ensure ha he code snippes no only
+conain he enire inpu processing ﬂow bu also ha he slicing resul is compilable and execuable.
+o address he consrains on he execuion condiions o code snippes, Ramos and Engler [72]
+proposed under-consrained symbolic execuion, allowing symbolic execuion o any uncion
+wihou iniializing any o is daa srucures or seting up any environmen. However, his echnique
+sill aces challenges wih loops, poiners, and library uncion calls, aﬀecing analysis accuracy. Our
+approach, LATTE, leverages he idea o ain analysis o slice he program and hen uilizes LLMs
+or vulnerabiliy analysis. By using LLMs, our approach reduces he dependency on he execuion
+environmen, alleviaing he need or comprehensive environmen seup and iniializaion. LLMs
+provide a deeper semanic undersanding o he code, improving he ideniﬁcaion and analysis
+o vulnerabiliies wihin he sliced snippes. Combining ain analysis wih LLMs allows or a
+more ocused and relevan slicing, ensuring ha he criical pars o he code relaed o poenial
+vulnerabiliies are included in he analysis.
+
+83:32
+
+P. Liu et al.
+
+ACM ransacions on Soware Engineering and Mehodology, Vol. 34, No. 3, Aricle 83. Publicaion dae: February 2025.
+
+Downloaded from the ACM Digital Library on April 7, 2025.
+
+[2] Mansour Ahmadi, Reza Mirzazade arkhani, Ryan Williams, and Long Lu. 2021. Finding bugs using your own code:
+Deecing uncionally-similar ye inconsisen code. In 30h USENIX Securiy Symposium (USENIX Securiy ’21).
+USENIX Associaion, 2025–2040. Rerieved rom hps://www.usenix.org/conerence/usenixsecuriy21/presenaion/
+ahmadi
+[3] ouﬁque Ahmed and Premkumar Devanbu. 2023. Few-sho raining LLMs or projec-speciﬁc code-summarizaion. In
+Proceedings o he 37h IEEE/ACM Inernaional Conerence on Auomaed Sofware Engineering (ASE ’22). Associaion
+or Compuing Machinery, New York, NY, Aricle 177, 1–5. DOI: hps://doi.org/10.1145/3551349.3559555
+[4] Manos Anonakakis, im April, Michael Bailey, Mat Bernhard, Elie Burszein, Jaime Cochran, Zakir Durumeric,
+J. Alex Halderman, Luca Invernizzi, and Michalis Kallisis. 2017. Undersanding he Mirai Bone. In 26h USENIX
+Securiy Symposium, 1093–1110.
+[5] BlackDuck. 2024. Coveriy Scan. Rerieved November 6, 2024 rom hps://scan.coveriy.com/
+[6] Sébasien Bubeck, Varun Chandrasekaran, Ronen Eldan, Johannes Gehrke, Eric Horviz, Ece Kamar, Peer Lee, Yin
+a Lee, Yuanzhi Li, Scot Lundberg, e al. 2023. Sparks o ariﬁcial general inelligence: Early experimens wih
+GP-4. arXiv:2303.12712. Rerieved rom hps://arxiv.org/abs/2303.12712
+[7] Marcel Busch, Aravind Machiry, Chad Spensky, Giovanni Vigna, Chrisopher Kruegel, and Mahias Payer. 2023.
+eezz: Fuzzing rused applicaions on cos Android devices. In 2023 IEEE Symposium on Securiy and Privacy (SP),
+220–235.
+[8] Jiongyi Chen, Wenrui Diao, ingchuan Zhao, Chaoshun Zuo, Zhiqiang Lin, XiaoFeng Wang, Wing Cheong Lau,
+Menghan Sun, Ronghai Yang, and Kehuan Zhang. 2018. IoFuzzer: Discovering memory corrupions in Io hrough
+app-based uzzing. In Nework and Disribued Sysem Securiy Symposium ( NDSS), 1–15.
+[9] Libo Chen, Qanpu Cai, Zhenbang Ma, Yanhao Wang, Hong Hu, Minghang Shen, Yue Liu, Shanqing Guo, Haixin
+Duan, Kaida Jiang, e al. 2022. SFuzz: Slice-based uzzing or real-ime operaing sysems. In 2022 ACM SIGSAC
+Conerence on Compuer and Communicaions Securiy (CCS ’22). ACM, New York, NY, 485–498. DOI: hps://doi.org/
+10.1145/3548606.3559367
+[10] Libo Chen, Yanhao Wang, Qanpu Cai, Yunan Zhan, Hong Hu, Jiaqi Linghu, insheng Hou, Chao Zhang, Haixin
+Duan, and Zhi Xue. 2021. Sharing more and checking less: Leveraging common inpu keywords o deec bugs in
+embedded sysems. In USENIX Securiy Symposium, 303–319.
+[11] Kai Cheng, iang Li, Lei Wang, ian Chen, Yaowen Zheng, Limin Sun, and Zhenkai Liang. 2018. Dain: Deecing
+he ain-syle vulnerabiliy in embedded device ﬁrmware. In 2018 48h Annual IEEE/IFIP Inernaional Conerence on
+Dependable Sysems and Neworks (DSN). IEEE, 430–441.
+[12] Kai Cheng, Yaowen Zheng, ao Liu, Le Guan, Peng Liu, Hong Li, Hongsong Zhu, Kejiang Ye, and Limin Sun. 2023.
+Deecing vulnerabiliies in Linux-based embedded ﬁrmware wih SSE-based on-demand alias analysis. In 2023 ACM
+SIGSOF Inernaional Symposium on Sofware esing and Analysis. ACM, 360–372.
+[13] Jake Chrisensen, Ionu Mugurel Anghel, Rob aglang, Mihai Chiroiu, and Radu Sion. 2020. DECAF: Auomaic,
+adapive de-bloaing and hardening o COS ﬁrmware. In 29h USENIX Securiy Symposium (USENIX Securiy ’20).
+USENIX Associaion, 1713–1730. Rerieved rom hps://www.usenix.org/conerence/usenixsecuriy20/presenaion/
+chrisensen
+[14] Abraham A. Clemens, Eric Gusason, obias Scharnowski, Paul Grosen, David Friz, Chrisopher Kruegel, Giovanni
+Vigna, Saurabh Bagchi, and Mahias Payer. 2020. HALucinaor: Firmware re-hosing hrough absracion layer
+emulaion. In 29h USENIX Securiy Symposium (USENIX Securiy ’20), 1201–1218.
+[15] Emilio Coppa, Heng Yin, and Camil Demerescu. 2022. Symusion: Hybrid insrumenaion or concolic execuion.
+In 37h IEEE/ACM Inernaional Conerence on Auomaed Sofware Engineering, 1–12.
+[16] DAIR.AI. 2024. Promp Engineering Guide. Rerieved June 1, 2024 rom hps://www.prompingguide.ai/echniques/
+ewsho
+[17] Yinlin Deng, Chunqiu Seven Xia, Haoran Peng, Chenyuan Yang, and Lingming Zhang. 2023. Large language models
+are zero-sho uzzers: Fuzzing deep-learning libraries via large language models. In 32nd ACM SIGSOF Inernaional
+Symposium on Sofware esing and Analysis, 423–435.
+[18] Yinlin Deng, Chunqiu Seven Xia, Chenyuan Yang, Shizhuo Dylan Zhang, Shujing Yang, and Lingming Zhang. 2024.
+Large language models are edge-case generaors: Craing unusual programs or uzzing deep learning libraries.
+In Proceedings o he IEEE/ACM 46h Inernaional Conerence on Sofware Engineering (ICSE ’24). Associaion or
+Compuing Machinery, New York, NY, Aricle 70, 1–13. DOI: hps://doi.org/10.1145/3597503.3623343
+[19] Edsger W. Dijksra. 2002. Ewd 1308: Wha Led o “Noes on Srucured Programming.” Springer.
+[20] Facebook. 2024. Iner. Rerieved November 6, 2024 rom hps://gihub.com/acebook/iner
+[21] Bo Feng, Alejandro Mera, and Long Lu. 2020. P2IM: Scalable and hardware-independen ﬁrmware esing via
+auomaic peripheral inerace modeling. In 29h USENIX Securiy Symposium (USENIX Securiy ’20), 1237–1254.
+[22] Xiaoao Feng, Ruoxi Sun, Xiaogang Zhu, Minhui Xue, Sheng Wen, Dongxi Liu, Surya Nepal, and Yang Xiang. 2021.
+Snipuzz: Black-box uzzing o Io ﬁrmware via message snippe inerence. In 2021 ACM SIGSAC Conerence on
+Compuer and Communicaions Securiy, 337–350.
+
+LLM-Powered Static Binary Taint Analysis
+
+83:33
+
+ACM ransacions on Soware Engineering and Mehodology, Vol. 34, No. 3, Aricle 83. Publicaion dae: February 2025.
+
+Downloaded from the ACM Digital Library on April 7, 2025.
+
+[23] NSA Cener or Assured Soware. 2017. Julie C/C++ 1.3. Rerieved May 1, 2023 rom hps://samae.nis.gov/SARD/
+es-suies/112
+[24] Daniel Fried, Armen Aghajanyan, Jessy Lin, Sida Wang, Eric Wallace, Freda Shi, Ruiqi Zhong, Wen-au Yih, Luke
+Zetlemoyer, and Mike Lewis. 2022. Incoder: A generaive model or code inﬁlling and synhesis. arXiv:2204.05999.
+Rerieved rom htps://arxiv.org/abs/2204.05999
+[25] Peer Garba and Mateo Favaro. 2019. Saurn-soware deobuscaion ramework based on LLVM. In 3rd ACM
+Workshop on Sofware Proecion, 27–38.
+[26] Clin Gibler, Jonahan Crussell, Jeremy Erickson, and Hao Chen. 2012. Androidleaks: Auomaically deecing poenial
+privacy leaks in Android applicaions on a large scale. In 5h Inernaional Conerence on rus and rusworhy
+Compuing (RUS ’12). Springer, 291–307.
+[27] Gihub. 2023. CodeL. Rerieved May 1, 2023 rom hps://codeql.gihub.com/
+[28] Gihub. 2023. OpenSSL. Rerieved May 1, 2023 rom hps://gihub.com/openssl/openssl
+[29] Gihub. 2024. Joern. Rerieved May 12, 2024 rom hps://joern.io/
+[30] Michael I. Gordon, Deokhwan Kim, Jeﬀ H. Perkins, Limei Gilham, Nguyen Nguyen, and Marin C. Rinard. 2015.
+Inormaion ﬂow analysis o Android applicaions in Droidsae. In Nework and Disribued Sysem Securiy Symposium
+( NDSS), Vol. 15, 110.
+[31] Ivan Goovchis, Rijnard Van onder, and David Brumley. 2018. Saluki: Finding ain-syle vulnerabiliies wih saic
+propery checking. In NDSS Workshop on Binary Analysis Research, Vol. 2018, 1–14.
+[32] i Guo, Junming Cao, Xiaoei Xie, Shangqing Liu, Xiaohong Li, Bihuan Chen, and Xin Peng. 2024. Exploring he
+poenial o ChaGP in auomaed code reﬁnemen: An empirical sudy. In 46h IEEE/ACM Inernaional Conerence
+on Sofware Engineering, 1–13.
+[33] H. Han, J. Kyea, Y. Jin, J. Kang, B. Pak, and I. Yun. 2023. QeryX: Symbolic query on decompiled code or ﬁnding
+bugs in COS binaries. In 2023 IEEE Symposium on Securiy and Privacy (SP). IEEE Compuer Sociey, Los Alamios,
+CA, 3279–3295. DOI: hps://doi.org/10.1109/SP46215.2023.00064
+[34] Jingxuan He and Marin Vechev. 2023. Large language models or code: Securiy hardening and adversarial esing.
+In 2023 ACM SIGSAC Conerence on Compuer and Communicaions Securiy, 1865–1879.
+[35] Gran Hernandez, Marius Muench, Dominik Maier, Alyssa Milburn, Shinjo Park, obias Scharnowski, yler ucker,
+Parick raynor, and Kevin Buler. 2022. FIRMWIRE: ransparen dynamic analysis or cellular baseband ﬁrmware.
+In Nework and Disribued Sysems Securiy Symposium (NDSS ’22), 1–19.
+[36] ISO. 2022. ISO/IEC 27001. Rerieved Augus 1, 2024 rom hps://www.iso.org/sandard/27001
+[37] Ashwin Kallingal Joshy, Xueyuan Chen, Benjamin Seenhoek, and Wei Le. 2021. Validaing saic warnings via
+esing code ragmens. In 30h ACM SIGSOF Inernaional Symposium on Sofware esing and Analysis (ISSA ’21).
+ACM, New York, NY, 540–552. DOI: hps://doi.org/10.1145/3460319.3464832
+[38] Sungmin Kang, Juyeon Yoon, and Shin Yoo. 2023. Large language models are ew-sho esers: Exploring LLM-based
+general bug reproducion. In 2023 IEEE/ACM 45h Inernaional Conerence on Sofware Engineering (ICSE). IEEE,
+2312–2323.
+[39] Jinyung Kim, Yongho Yoon, Kwangkeun Yi, Junbum Shin, and SWRD Cener. 2012. ScanDal: Saic analyzer or
+deecing privacy leaks in Android applicaions. MoS 12, 110 (2012), 1.
+[40] Mingeun Kim, Dongkwan Kim, Eunsoo Kim, Suryeon Kim, Yeongjin Jang, and Yongdae Kim. 2020. FirmAE: owards
+large-scale emulaion o Io ﬁrmware or dynamic analysis. In Annual Compuer Securiy Applicaions Conerence,
+733–745.
+[41] R. Langner. 2011. Suxne: Dissecing a cyberwarare weapon. IEEE Securiy Privacy 9, 3 (2011), 49–51.
+[42] Caroline Lemieux, Jeevana Priya Inala, Shuvendu K. Lahiri, and Siddharha Sen. 2023. CODAMOSA: Escaping
+coverage plaeaus in es generaion wih pre-rained large language models. In Inernaional Conerence on Sofware
+Engineering (ICSE), 919–931.
+[43] Haonan Li, Yu Hao, Yizhuo Zhai, and Zhiyun ian. 2023. Assising saic analysis wih large language models: A
+ChaGP experimen. In 31s ACM Join European Sofware Engineering Conerence and Symposium on he Foundaions
+o Sofware Engineering, 2107–2111.
+[44] Wenqiang Li, Jiameng Shi, Fengjun Li, Jingqiang Lin, Wei Wang, and Le Guan. 2022. uAFL: Non-inrusive eedbackdriven uzzing or microconroller ﬁrmware. In 44h Inernaional Conerence on Sofware Engineering (ICSE ’22).
+ACM, New York, NY, 1–12. DOI: hps://doi.org/10.1145/3510003.3510208
+[45] Puzhuo Liu, Dongliang Fang, Chuan in, Kai Cheng, Shichao Lv, Hongsong Zhu, and Limin Sun. 2022. Finding
+vulnerabiliies in inernal-binary o ﬁrmware wih clues. In IEEE Inernaional Conerence on Communicaions (ICC
+’22). IEEE, 5397–5402.
+[46] Puzhuo Liu, Yaowen Zheng, Chengnian Sun, Chuan in, Dongliang Fang, Mingdong Liu, and Limin Sun. 2024.
+FIS: Inerring inermediae ain sources or eﬀecive vulnerabiliy analysis o Io device ﬁrmware. In 28h ACM
+Inernaional Conerence on Archiecural Suppor or Programming Languages and Operaing Sysems (ASPLOS ’23),
+Vol. 4. ACM, New York, NY, 138–152. DOI: hps://doi.org/10.1145/3623278.3624759
+
+83:34
+
+P. Liu et al.
+
+ACM ransacions on Soware Engineering and Mehodology, Vol. 34, No. 3, Aricle 83. Publicaion dae: February 2025.
+
+Downloaded from the ACM Digital Library on April 7, 2025.
+
+[47] Benjamin Livshis, Adiya V. Nori, Sriram K. Rajamani, and Anindya Banerjee. 2009. Merlin: Speciﬁcaion inerence
+or explici inormaion ﬂow problems. SIGPLAN Noices 44, 6 (Jun. 2009), 75–86. DOI: hps://doi.org/10.1145/
+1543135.1542485
+[48] Maias Madou, Ludo Van Pu, and Koen De Bosschere. 2006. Loco: An ineracive code (de) obuscaion ool. In 2006
+ACM SIGPLAN Symposium on Parial Evaluaion and Semanics-Based Program Manipulaion, 140–144.
+[49] Abdalla Wase Marashdih, Zarul Firi Zaaba, and Khaled Suwais. 2023. An enhanced saic ain analysis approach o
+deec inpu validaion vulnerabiliy. Journal o King Saud Universiy-Compuer and Inormaion Sciences 35, 2 (2023),
+682–701.
+[50] Gary McGraw. 2006. Sofware Securiy: Building Securiy In. Addison-Wesley Proessional. Rerieved rom hps:
+//dl.acm.org/doi/book/10.5555/1121680
+[51] Ruijie Meng, Marin Mirchev, Marcel Bohme, and Abhik Roychoudhury. 2024. Large language model guided proocol
+uzzing. In 31s Annual Nework and Disribued Sysem Securiy Symposium (NDSS), 1–17.
+[52] Xiaozhu Meng and Baron P. Miller. 2016. Binary code is no easy. In 25h Inernaional Symposium on Sofware
+esing and Analysis, 24–35.
+[53] Alejandro Mera, Bo Feng, Long Lu, and Engin Kirda. 2021. DICE: Auomaic emulaion o DMA inpu channels or
+dynamic ﬁrmware analysis. In 2021 IEEE Symposium on Securiy and Privacy (SP). IEEE, 1938–1954.
+[54] Mire. 2023. Common Vulnerabiliy Enumeraion. Rerieved May 1, 2023 rom hps://cve.mire.org/
+[55] Mire. 2023. Common Weakness Enumeraion. Rerieved May 1, 2023 rom hps://cwe.mire.org/
+[56] Mire. 2024. Crypographic Issues. Rerieved Augus 1, 2024 rom hps://cwe.mire.org/daa/deiniions/310.hml
+[57] Mire. 2024. CWE CAEGORY: Business Logic Errors. Rerieved Augus 1, 2024 rom hps://cwe.mire.org/daa/
+deiniions/840.hml
+[58] Mire. 2024. Race Condiion. Rerieved Augus 1, 2024 rom hps://cwe.mire.org/daa/deiniions/362.hml
+[59] Aniruddhan Murali, Noble Mahews, Mahmoud Aladel, Meiyappan Nagappan, and Meng Xu. 2024. FuzzSlice:
+Pruning alse posiives in saic analysis warnings hrough uncion-level uzzing. In IEEE/ACM 46h Inernaional
+Conerence on Sofware Engineering (ICSE ’24). ACM, New York, NY, Aricle 65, 13 pages. DOI: hps://doi.org/10.
+1145/3597503.3623321
+[60] Abbas Naderi-Aoosheh, Anh Nguyen-uong, Mandana Bagheri-Marzijarani, Jason D. Hiser, and Jack W. Davidson.
+2015. Joza: Hybrid ain inerence or deeaing web applicaion SL injecion atacks. In 2015 45h Annual IEEE/IFIP
+Inernaional Conerence on Dependable Sysems and Neworks. IEEE, 172–183.
+[61] NIS. 2020. NIS SP 800-53. Rerieved Augus 1, 2024 rom hps://csrc.nis.gov/pubs/sp/800/53/r5/upd1/inal
+[62] NSA. 2023. Ghidra. Rerieved May 1, 2023 rom hps://ghidra-sre.org
+[63] OPENAI. 2023. GP-4.0. Rerieved May 1, 2023 rom hhps://plaorm.openai.com
+[64] OpenAI. 2023. okenizer. Rerieved May 1, 2023 rom hps://plaorm.openai.com/okenizer
+[65] Hammond Pearce, Baleegh Ahmad, Benjamin an, Brendan Dolan-Gavit, and Ramesh Karri. 2022. Asleep a he
+keyboard? Assessing he securiy o Gihub Copilo’s code conribuions. In 2022 IEEE Symposium on Securiy and
+Privacy (SP). IEEE, 754–768.
+[66] Neil Perry, Megha Srivasava, Deepak Kumar, and Dan Boneh. 2023. Do users wrie more insecure code wih AI
+assisans? In Proceedings o he 2023 ACM SIGSAC Conerence on Compuer and Communicaions Securiy (CCS ’23).
+Associaion or Compuing Machinery, New York, NY, 2785–2799. DOI: hps://doi.org/10.1145/3576915.3623157
+[67] Jannik Pewny, Behrad Garmany, Rober Gawlik, Chrisian Rossow, and Torsen Holz. 2015. Cross-archiecure bug
+search in binary execuables. In 2015 IEEE Symposium on Securiy and Privacy. IEEE, 709–724.
+[68] Sebasian Poeplau and Aurélien Francillon. 2020. Symbolic execuion wih SymCC: Don’ inerpre, compile! In 29h
+USENIX Securiy Symposium (USENIX Securiy ’20), 181–198.
+[69] Marios Pomonis, Teoﬁlos Pesios, Kangkook Jee, Michalis Polychronakis, and Angelos D. Keromyis. 2014. InFlow:
+Improving he accuracy o arihmeic error deecion using inormaion ﬂow racking. In 30h Annual Compuer
+Securiy Applicaions Conerence (ACSAC ’14). ACM, New York, NY, 416–425. DOI: hps://doi.org/10.1145/2664243.
+2664282
+[70] Julian Aron Prenner, Hlib Babii, and Romain Robbes. 2022. Can OpenAI’s codex ﬁx bugs? An evaluaion on QixBugs.
+In 3rd Inernaional Workshop on Auomaed Program Repair, 69–75.
+[71] Rui iao and R. Sekar. 2017. Funcion inerace analysis: A principled approach or uncion recogniion in COS
+binaries. In 2017 47h Annual IEEE/IFIP Inernaional Conerence on Dependable Sysems and Neworks (DSN). IEEE,
+201–212.
+[72] David A. Ramos and Dawson Engler. 2015. Under-consrained symbolic execuion: Correcness checking or real
+code. In 24h USENIX Securiy Symposium (USENIX Securiy ’15). USENIX Associaion, Washingon, D.C., 49–64.
+Rerieved rom hps://www.usenix.org/conerence/usenixsecuriy15/echnical-sessions/presenaion/ramos
+[73] Nilo Redini, Aravind Machiry, Dipanjan Das, Yanick Fraanonio, Anonio Bianchi, Eric Gusason, Yan Shoshiaishvili,
+Chrisopher Kruegel, and Giovanni Vigna. 2017. BooSomp: On he securiy o booloaders in mobile devices. In
+26h USENIX Securiy Symposium (USENIX Securiy ’17), 781–798.
+
+LLM-Powered Static Binary Taint Analysis
+
+83:35
+
+ACM ransacions on Soware Engineering and Mehodology, Vol. 34, No. 3, Aricle 83. Publicaion dae: February 2025.
+
+Downloaded from the ACM Digital Library on April 7, 2025.
+
+[74] Nilo Redini, Aravind Machiry, Ruoyu Wang, Chad Spensky, Andrea Coninella, Yan Shoshiaishvili, Chrisopher
+Kruegel, and Giovanni Vigna. 2020. Karone: Deecing insecure muli-binary ineracions in embedded ﬁrmware. In
+2020 IEEE Symposium on Securiy and Privacy (SP). IEEE, 1544–1561.
+[75] Solmaz Salimi and Mehdi Kharrazi. 2022. VulSlicer: Vulnerabiliy deecion hrough code slicing. Journal o Sysems
+and Sofware 193 (2022), 111450. DOI: hps://doi.org/10.1016/j.jss.2022.111450
+[76] Haziq Bin Sanib, an Joven, ee Kai Guan, Sree Vahsan, and oh Zheng Hong Shawn. 2022. Ghos. Rerieved May 1,
+2023 rom hps://gihub.com/hlc/source-sink-ghidra
+[77] obias Scharnowski, Nils Bars, Moriz Schloegel, Eric Gusason, Marius Muench, Giovanni Vigna, Chrisopher
+Kruegel, Torsen Holz, and Ali Abbasi. 2022. Fuzzware: Using precise MMIO modeling or eﬀecive ﬁrmware
+uzzing. In 31s USENIX Securiy Symposium (USENIX Securiy ’22), 1239–1256.
+[78] Yan Shoshiaishvili, Ruoyu Wang, Chrisopher Salls, Nick Sephens, Mario Polino, Andrew Ducher, John Grosen,
+Siji Feng, Chrisophe Hauser, Chrisopher Kruegel, e al. 2016. SOK: (Sae of) he ar o war: Oﬀensive echniques in
+binary analysis. In 2016 IEEE Symposium on Securiy and Privacy (SP), 138–157. DOI: hps://doi.org/10.1109/SP.2016.17
+[79] Dominik Sobania, Marin Briesch, Carol Hanna, and Jusyna Peke. 2023. An analysis o he auomaic bug ﬁxing
+perormance o ChaGP. arXiv:2301.08653. Rerieved rom htps://arxiv.org/abs/2301.08653
+[80] Nick Sephens, John Grosen, Chrisopher Salls, Andrew Ducher, Ruoyu Wang, Jacopo Corbeta, Yan Shoshiaishvili,
+Chrisopher Kruegel, and Giovanni Vigna. 2016. Driller: Augmening uzzing hrough selecive symbolic execuion.
+In Nework and Disribued Sysem Securiy Symposium ( NDSS), Vol. 16, 1–16.
+[81] Yulei Sui. 2024. Saic Value-Flow Analysis Framework or Source Code. Rerieved May 1, 2024 rom hps://gihub.
+com/SVF-ools/SVF
+[82] Weisong Sun, Chunrong Fang, Yudu You, Yun Miao, Yi Liu, Yuekang Li, Gelei Deng, Shenghan Huang, Yuchen
+Chen, Qanjun Zhang, e al. 2023. Auomaic code summarizaion via ChaGP: How ar are we? arXiv:2305.12865.
+Rerieved rom hps://arxiv.org/abs/2305.12865
+[83] Joshua Henrina Sundjaja, Rijen Shresha, and Kewal Krishan. 2023. McNemar and Mann-Whiney U ess. Rerieved
+Augus 1, 2024 rom hps://www.ncbi.nlm.nih.gov/books/NBK560699/
+[84] Nigar M. Shaﬁq Surameery and Mohammed Y. Shakor. 2023. Use ChaGP o solve programming bugs. Inernaional
+Journal o Inormaion echnology & Compuer Engineering 1 (2023), 17–22.
+[85] Julian Tomé, Lwin Khin Shar, Domenico Bianculli, and Lionel Briand. 2018. Securiy slicing or audiing common
+injecion vulnerabiliies. Journal o Sysems and Sofware 137 (2018), 766–783. DOI: hps://doi.org/10.1016/j.jss.2017.
+02.040
+[86] Ramine oﬁghi-Shirazi, Irina-Mariuca Asavoae, Philippe Elbaz-Vincen, and Tanh-Ha Le. 2019. Deeaing opaque
+predicaes saically hrough machine learning and binary analysis. In 3rd ACM Workshop on Sofware Proecion,
+3–14.
+[87] Omer ripp, Marco Pisoia, Sephen J. Fink, Manu Sridharan, and Omri Weisman. 2009. AJ: Eﬀecive ain analysis
+o web applicaions. SIGPLAN Noices 44, 6 (Jun. 2009), 87–97. DOI: hps://doi.org/10.1145/1543135.1542486
+[88] Jayakrishna Vadayah, Moriz Ecker, Kyle Zeng, Nicolaas Weideman, Gokulkrishna Praveen Menon, Yanick Fraanonio, Davide Balzaroti, Adam Doupe, iﬀany Bao, Ruoyu Wang, e al. 2022. Arbier: Bridging he saic and dynamic
+divide in vulnerabiliy discovery on binary programs. In 31s USENIX Securiy Symposium (USENIX Securiy ’22),
+413–430.
+[89] Aurélien Vasselle, Philippe Maurine, and Maxime Cozzi. 2019. Breaking mobile ﬁrmware encrypion hrough
+near-ﬁeld side-channel analysis. In 3rd ACM Workshop on Atacks and Soluions in Hardware Securiy Workshop,
+23–32.
+[90] Nalin Wadhwa, Jui Pradhan, Aharv Sonwane, Surya Prakash Sahu, Nagarajan Naarajan, Adiya Kanade, Suresh
+Parhasarahy, and Sriram Rajamani. 2023. Frusraed wih code qualiy issues? LLMs can help! arXiv:2309.12938.
+Rerieved rom htps://arxiv.org/abs/2309.12938
+[91] Chengpeng Wang, Wuqi Zhang, Zian Su, Xiangzhe Xu, Xiaoheng Xie, and Xiangyu Zhang. 2024. LLMDFA: Analyzing
+daaﬂow in code wih large language models. In Annual Conerence on Neural Inormaion Processing Sysems, 1–24.
+[92] Chengpeng Wang, Wuqi Zhang, Zian Su, Xiangzhe Xu, and Xiangyu Zhang. 2024. Saniizing large language models
+in bug deecion wih daa-ﬂow. In he 2024 Conerence on Empirical Mehods in Naural Language Processing, 1–16.
+[93] Jules Whie, Qchen Fu, Sam Hays, Michael Sandborn, Carlos Olea, Henry Gilber, Ashra Elnashar, Jesse SpencerSmih, and Douglas C. Schmid. 2023. A promp patern caalog o enhance promp engineering wih ChaGP.
+arXiv:2302.11382. Rerieved rom htps://arxiv.org/abs/2302.11382
+[94] Yi Wu, Nan Jiang, Hung Vie Pham, Tibaud Luellier, Jordan Davis, Lin an, Per Babkin, and Sameena Shah. 2023.
+How eﬀecive are neural neworks or ﬁxing securiy vulnerabiliies. In 32nd ACM SIGSOF Inernaional Symposium
+on Sofware esing and Analysis (ISSA ’23). ACM, New York, NY, 1282–1294. DOI: hps://doi.org/10.1145/3597926.
+3598135
+
+83:36
+
+P. Liu et al.
+
+Received 3 November 2023; revised 8 November 2024; acceped 11 December 2024
+
+ACM ransacions on Soware Engineering and Mehodology, Vol. 34, No. 3, Aricle 83. Publicaion dae: February 2025.
+
+Downloaded from the ACM Digital Library on April 7, 2025.
+
+[95] Chunqiu Seven Xia and Lingming Zhang. 2022. Less raining, more repairing please: Revisiing auomaed program
+repair via zero-sho learning. In 30h ACM Join European Sofware Engineering Conerence and Symposium on he
+Foundaions o Sofware Engineering, 959–971.
+[96] Chunqiu Seven Xia and Lingming Zhang. 2023. Conversaional auomaed program repair. arXiv:2301.13246.
+Rerieved rom htps://arxiv.org/abs/2301.13246
+[97] Chunqiu Seven Xia and Lingming Zhang. 2024. Auomaed program repair via conversaion: Fixing 162 ou o
+337 bugs or $0.42 each using ChaGP. In Proceedings o he 33rd ACM SIGSOF Inernaional Symposium on
+Sofware esing and Analysis (ISSA 2024). Associaion or Compuing Machinery, New York, NY, 819–831. DOI:
+hps://doi.org/10.1145/3650212.3680323
+[98] Fabian Yamaguchi, Alwin Maier, Hugo Gascon, and Konrad Rieck. 2015. Auomaic inerence o search paterns or
+ain-syle vulnerabiliies. In 2015 IEEE Symposium on Securiy and Privacy. IEEE, 797–812.
+[99] Burak Yeişiren, Işı̇k Özsoy, Miray Ayerdem, and Eray üzün. 2023. Evaluaing he code qualiy o AI-assised code
+generaion ools: An empirical sudy on GiHub copilo, Amazon CodeWhisperer, and ChaGP. arXiv:2304.10778.
+Rerieved rom htps://arxiv.org/abs/2304.10778
+[100] Burak Yeisiren, Isik Ozsoy, and Eray uzun. 2022. Assessing he qualiy o GiHub Copilo’s code generaion. In
+18h Inernaional Conerence on Predicive Models and Daa Analyics in Sofware Engineering, 62–71.
+[101] Insu Yun, Sangho Lee, Meng Xu, Yeongjin Jang, and aesoo Kim. 2018. SYM: A pracical concolic execuion engine
+ailored or hybrid uzzing. In 27h USENIX Securiy Symposium (USENIX Securiy ’18), 745–761.
+[102] Zhuo Zhang, Yapeng Ye, Wei You, Guanhong ao, Wen-chuan Lee, Yonghwi Kwon, Yousra Aaer, and Xiangyu
+Zhang. 2021. Osprey: Recovery o variable and daa srucure via probabilisic analysis or sripped binary. In 2021
+IEEE Symposium on Securiy and Privacy (SP). IEEE, 813–832.
+[103] Yaowen Zheng, Ali Davanian, Heng Yin, Chengyu Song, Hongsong Zhu, and Limin Sun. 2019. FIRM-AFL: Highhroughpu greybox uzzing o Io ﬁrmware via augmened process emulaion. In 28h USENIX Securiy Symposium
+(USENIX Securiy ’19), 1099–1114.
+
+

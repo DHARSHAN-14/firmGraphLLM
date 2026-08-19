@@ -1,0 +1,85 @@
+09:57:06 [INFO] Cleaning /home/dharshan/Documents/R&D/data/juliet/compiled
+09:57:06 [INFO] FirmGraph-LLM — Juliet Compilation Pipeline
+09:57:06 [INFO]   Target CWEs : [78, 134, 190, 606]
+09:57:06 [INFO]   Platform    : Linux only (w32 files skipped)
+09:57:06 [INFO]   Workers     : 6
+09:57:06 [INFO]   Limit/CWE   : all
+09:57:06 [INFO] 
+Compiling testcasesupport objects...
+09:57:06 [INFO]   Compiled support: io.c
+09:57:06 [INFO]   Compiled support: std_thread.c
+09:57:06 [INFO] 
+============================================================
+09:57:06 [INFO]   CWE-78 (CWE78_OS_Command_Injection)
+09:57:06 [INFO]   Groups: 1520 (covering 2240 source files)
+09:57:06 [INFO] ============================================================
+09:57:26 [INFO]   [78] ✓ 200 compiled, ✗ 0 failed
+09:57:43 [INFO]   [78] ✓ 400 compiled, ✗ 0 failed
+09:58:11 [INFO]   [78] ✓ 600 compiled, ✗ 520 failed
+09:58:46 [INFO]   [78] DONE — ✓ 760 succeeded, ✗ 760 failed
+09:58:46 [INFO] 
+============================================================
+09:58:46 [INFO]   CWE-134 (CWE134_Uncontrolled_Format_String)
+09:58:46 [INFO]   Groups: 1900 (covering 2800 source files)
+09:58:46 [INFO] ============================================================
+09:59:04 [INFO]   [134] ✓ 200 compiled, ✗ 0 failed
+09:59:22 [INFO]   [134] ✓ 400 compiled, ✗ 0 failed
+09:59:41 [INFO]   [134] ✓ 600 compiled, ✗ 0 failed
+10:00:01 [INFO]   [134] ✓ 800 compiled, ✗ 0 failed
+10:00:20 [INFO]   [134] ✓ 1000 compiled, ✗ 130 failed
+10:00:43 [INFO]   [134] ✓ 1200 compiled, ✗ 130 failed
+10:01:12 [INFO]   [134] ✓ 1400 compiled, ✗ 130 failed
+10:01:53 [INFO]   [134] ✓ 1600 compiled, ✗ 190 failed
+10:02:12 [INFO]   [134] DONE — ✓ 1710 succeeded, ✗ 190 failed
+10:02:12 [INFO] 
+============================================================
+10:02:12 [INFO]   CWE-190 (CWE190_Integer_Overflow)
+10:02:12 [INFO]   Groups: 3420 (covering 5040 source files)
+10:02:12 [INFO] ============================================================
+10:02:40 [INFO]   [190] ✓ 200 compiled, ✗ 0 failed
+10:03:04 [INFO]   [190] ✓ 400 compiled, ✗ 0 failed
+10:03:24 [INFO]   [190] ✓ 600 compiled, ✗ 0 failed
+10:03:43 [INFO]   [190] ✓ 800 compiled, ✗ 0 failed
+10:04:03 [INFO]   [190] ✓ 1000 compiled, ✗ 0 failed
+10:04:21 [INFO]   [190] ✓ 1200 compiled, ✗ 0 failed
+10:04:39 [INFO]   [190] ✓ 1400 compiled, ✗ 0 failed
+10:04:57 [INFO]   [190] ✓ 1600 compiled, ✗ 0 failed
+10:05:14 [INFO]   [190] ✓ 1800 compiled, ✗ 0 failed
+10:05:27 [INFO]   [190] ✓ 2000 compiled, ✗ 0 failed
+10:05:40 [INFO]   [190] ✓ 2200 compiled, ✗ 0 failed
+10:05:58 [INFO]   [190] ✓ 2400 compiled, ✗ 0 failed
+10:06:23 [INFO]   [190] ✓ 2600 compiled, ✗ 0 failed
+10:06:49 [INFO]   [190] ✓ 2800 compiled, ✗ 0 failed
+10:07:20 [INFO]   [190] ✓ 3000 compiled, ✗ 0 failed
+10:07:51 [INFO]   [190] ✓ 3200 compiled, ✗ 0 failed
+10:08:27 [INFO]   [190] ✓ 3400 compiled, ✗ 0 failed
+10:08:29 [INFO]   [190] DONE — ✓ 3420 succeeded, ✗ 0 failed
+10:08:30 [INFO] 
+============================================================
+10:08:30 [INFO]   CWE-606 (CWE606_Unchecked_Loop_Condition)
+10:08:30 [INFO]   Groups: 380 (covering 560 source files)
+10:08:30 [INFO] ============================================================
+10:08:47 [INFO]   [606] ✓ 200 compiled, ✗ 26 failed
+10:09:06 [INFO]   [606] DONE — ✓ 342 succeeded, ✗ 38 failed
+10:09:06 [INFO] 
+Manifest saved → data/juliet/compile_manifest.json
+10:09:06 [INFO] 
+============================================================
+10:09:06 [INFO] COMPILATION SUMMARY
+10:09:06 [INFO] ============================================================
+10:09:06 [INFO]   Total groups compiled : 7220
+10:09:06 [INFO]   ✓ Succeeded           : 6232
+10:09:06 [INFO]   ✗ Failed              : 988
+10:09:06 [INFO]   Total binary size     : 186.6 MB
+10:09:06 [INFO] ============================================================
+10:09:06 [WARNING] First 5 failures:
+10:09:06 [WARNING]   CWE-78 CWE78_OS_Command_Injection__wchar_t_connect_socket_execl_01.c: /home/dharshan/Documents/R&D/Dataset/Juliet_Test_Suite_v1.3_for_C_Cpp/C/testcases/CWE78_OS_Command_Injection/s05/CWE78_OS_Command_Injection__wchar_t_connect_socket_execl_01.c: In function ‘CWE78_OS_Command_Injection__wchar_t_connect_socket_execl_01_bad’:
+/home/dharshan/Documents/R&D/Dataset/Juliet_Test_Suite_v1.3_for_C_Cpp/C/testcases/CWE78_OS_Command_Injection/s05/CWE78_OS_Command_Injection__wcha
+10:09:06 [WARNING]   CWE-78 CWE78_OS_Command_Injection__wchar_t_connect_socket_execl_02.c: /home/dharshan/Documents/R&D/Dataset/Juliet_Test_Suite_v1.3_for_C_Cpp/C/testcases/CWE78_OS_Command_Injection/s05/CWE78_OS_Command_Injection__wchar_t_connect_socket_execl_02.c: In function ‘CWE78_OS_Command_Injection__wchar_t_connect_socket_execl_02_bad’:
+/home/dharshan/Documents/R&D/Dataset/Juliet_Test_Suite_v1.3_for_C_Cpp/C/testcases/CWE78_OS_Command_Injection/s05/CWE78_OS_Command_Injection__wcha
+10:09:06 [WARNING]   CWE-78 CWE78_OS_Command_Injection__wchar_t_connect_socket_execl_04.c: /home/dharshan/Documents/R&D/Dataset/Juliet_Test_Suite_v1.3_for_C_Cpp/C/testcases/CWE78_OS_Command_Injection/s05/CWE78_OS_Command_Injection__wchar_t_connect_socket_execl_04.c: In function ‘CWE78_OS_Command_Injection__wchar_t_connect_socket_execl_04_bad’:
+/home/dharshan/Documents/R&D/Dataset/Juliet_Test_Suite_v1.3_for_C_Cpp/C/testcases/CWE78_OS_Command_Injection/s05/CWE78_OS_Command_Injection__wcha
+10:09:06 [WARNING]   CWE-78 CWE78_OS_Command_Injection__wchar_t_connect_socket_execl_03.c: /home/dharshan/Documents/R&D/Dataset/Juliet_Test_Suite_v1.3_for_C_Cpp/C/testcases/CWE78_OS_Command_Injection/s05/CWE78_OS_Command_Injection__wchar_t_connect_socket_execl_03.c: In function ‘CWE78_OS_Command_Injection__wchar_t_connect_socket_execl_03_bad’:
+/home/dharshan/Documents/R&D/Dataset/Juliet_Test_Suite_v1.3_for_C_Cpp/C/testcases/CWE78_OS_Command_Injection/s05/CWE78_OS_Command_Injection__wcha
+10:09:06 [WARNING]   CWE-78 CWE78_OS_Command_Injection__wchar_t_connect_socket_execl_05.c: /home/dharshan/Documents/R&D/Dataset/Juliet_Test_Suite_v1.3_for_C_Cpp/C/testcases/CWE78_OS_Command_Injection/s05/CWE78_OS_Command_Injection__wchar_t_connect_socket_execl_05.c: In function ‘CWE78_OS_Command_Injection__wchar_t_connect_socket_execl_05_bad’:
+/home/dharshan/Documents/R&D/Dataset/Juliet_Test_Suite_v1.3_for_C_Cpp/C/testcases/CWE78_OS_Command_Injection/s05/CWE78_OS_Command_Injection__wcha

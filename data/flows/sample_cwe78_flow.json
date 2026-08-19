@@ -1,0 +1,22 @@
+[
+  {
+    "flow_id": "CWE78_OS_Command_Injection__char_connect_socket_execl_01_bad_flow",
+    "binary_name": "CWE78_OS_Command_Injection__char_connect_socket_execl_01",
+    "source_func": "recv",
+    "source_param": 1,
+    "sink_func": "execl",
+    "sink_param": 0,
+    "expected_cwe": "CWE-78",
+    "function_chain": [
+      {
+        "name": "CWE78_OS_Command_Injection__char_connect_socket_execl_01_bad",
+        "pseudocode": "void CWE78_OS_Command_Injection__char_connect_socket_execl_01_bad(void)\n{\n    char * data;\n    char dataBuffer[100] = \"\";\n    data = dataBuffer;\n    {\n        struct sockaddr_in service;\n        int recvResult;\n        int connectSocket = -1;\n        connectSocket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);\n        if (connectSocket != -1)\n        {\n            service.sin_family = AF_INET;\n            service.sin_addr.s_addr = inet_addr(\"127.0.0.1\");\n            service.sin_port = htons(27015);\n            if (connect(connectSocket, (struct sockaddr*)&service, sizeof(service)) != -1)\n            {\n                recvResult = recv(connectSocket, (char *)(data + strlen(data)), (int)(100 - strlen(data) - 1), 0);\n                if (recvResult > 0)\n                {\n                    data[recvResult] = '\\0';\n                }\n            }\n            CLOSE_SOCKET(connectSocket);\n        }\n    }\n    /* POTENTIAL FLAW: Execute command without validating input */\n    execl(\"/bin/sh\", \"/bin/sh\", \"-c\", data, NULL);\n}",
+        "binary": "CWE78_OS_Command_Injection__char_connect_socket_execl_01",
+        "address": "0x401200",
+        "is_source": true,
+        "is_sink": true,
+        "api_calls": ["socket", "connect", "recv", "execl"]
+      }
+    ]
+  }
+]
