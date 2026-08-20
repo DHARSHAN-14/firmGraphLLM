@@ -10,6 +10,7 @@ The weighted combination produces a final_score that determines triage order.
 
 import logging
 from dataclasses import dataclass, field
+from typing import Optional
 
 from llm.reasoning.conversation import VulnerabilityResult
 
@@ -175,8 +176,3 @@ class VulnerabilityRanker:
         }
 
 
-# Optional import guard for type hints
-try:
-    from typing import Optional
-except ImportError:
-    Optional = None  # type: ignore

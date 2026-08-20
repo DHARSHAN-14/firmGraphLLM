@@ -123,11 +123,17 @@ class MetricsCalculator:
         total     = defaultdict(int)
 
         for r in results:
-            binary  = getattr(r, "binary_name", r.get("binary_name", ""))
-            gt      = self._gt.get(binary, {})
+            # Support both dataclass (RankedVulnerability) and dict results
+            if isinstance(r, dict):
+                binary   = r.get("binary_name", "")
+                pred_cwe = r.get("cwe", "Unknown")
+            else:
+                binary   = getattr(r, "binary_name", "")
+                pred_cwe = getattr(r, "cwe", "Unknown")
+
+            gt       = self._gt.get(binary, {})
             true_cwe = f"CWE-{gt.get('cwe_id', '')}"
-            pred_cwe = getattr(r, "cwe", r.get("cwe", "Unknown"))
-            if pred_cwe is None:
+            if not pred_cwe:
                 continue
             total[true_cwe] += 1
             if pred_cwe == true_cwe:
@@ -152,12 +158,29 @@ class MetricsCalculator:
         }
 
     def _is_actually_vulnerable(self, binary_name: str) -> bool:
-        """Look up whether a binary is actually vulnerable in ground truth."""
-        # Match by stem (without extension)
-        stem = Path(binary_name).stem
+        """
+        Look up whether a binary is actually vulnerable in ground truth.
+        Juliet 'bad' binaries contain vulnerable code; 'good' binaries are patched.
+        Uses exact key match first, then path-component-safe matching.
+        """
+        # 1. Exact match
+        if binary_name in self._gt:
+            return self._gt[binary_name].get("is_vulnerable", True)
+
+        # 2. Match by full path component (not substring) to avoid false positives
+        binary_stem = Path(binary_name).stem if "." in binary_name else binary_name
         for fname, entry in self._gt.items():
-            if stem in fname:
+            parts = Path(fname).parts
+            if binary_stem in parts or Path(fname).stem == binary_stem:
                 return entry.get("is_vulnerable", True)
+
+        # 3. Juliet naming fallback: 'bad' path → vulnerable, 'good' path → safe
+        name_lower = binary_name.lower()
+        if "/bad/" in name_lower or name_lower.endswith("_bad"):
+            return True
+        if "/good/" in name_lower or name_lower.endswith("_good"):
+            return False
+
         return False  # not in GT → treat as non-vulnerable
 
 

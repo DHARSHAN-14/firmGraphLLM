@@ -6,7 +6,7 @@ Ties the full pipeline together:
 """
 import json
 import logging
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Optional
 
@@ -21,7 +21,7 @@ class AnalysisConfig:
     use_kg_retrieval: bool  = True   # False = LATTE baseline mode (B2)
     top_k_similar:    int   = 5
     save_results:     bool  = True
-    results_dir:      Path  = Path("reports/")
+    results_dir:      Path  = field(default_factory=lambda: Path("reports/"))
     llm_weight:       float = 0.5
     kg_weight:        float = 0.3
     cwe_weight:       float = 0.2

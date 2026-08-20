@@ -4,10 +4,16 @@ Combines vector similarity (FAISS) + graph traversal (Neo4j) → GraphRAG.
 """
 import json
 import logging
-import numpy as np
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Optional
+
+try:
+    import numpy as np
+    _NUMPY_AVAILABLE = True
+except ImportError:
+    _NUMPY_AVAILABLE = False
+    np = None  # type: ignore
 
 log = logging.getLogger(__name__)
 
@@ -46,6 +52,9 @@ class VectorSearcher:
 
     def search(self, query_embedding: list[float], top_k: int = 10) -> list[VectorSearchResult]:
         if not self.is_loaded():
+            return []
+        if not _NUMPY_AVAILABLE:
+            log.warning("numpy not installed — vector search disabled. Run: pip install numpy faiss-cpu")
             return []
         try:
             import faiss

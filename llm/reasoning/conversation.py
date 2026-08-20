@@ -333,8 +333,8 @@ class VulnerabilityAnalyzer:
         except json.JSONDecodeError:
             pass
 
-        # Find first JSON object in response
-        match = re.search(r"\{.*?\}", text, re.DOTALL)
+        # Find the last JSON object in response (greedy to capture nested fields)
+        match = re.search(r"\{.*\}", text, re.DOTALL)
         if match:
             try:
                 return json.loads(match.group())
