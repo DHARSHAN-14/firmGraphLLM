@@ -71,9 +71,10 @@ class GraphBuilder:
     def add_vuln_pattern(self, node: VulnPatternNode) -> None:
         with self._driver.session() as s:
             s.run("""MERGE (n:VulnPattern {id:$id})
-                     SET n.description=$desc, n.cwe_id=$cwe,
-                         n.api_sequence=$apis
-                     ON MATCH SET n.occurrence_count = n.occurrence_count + 1""",
+                     ON CREATE SET n.occurrence_count = 1,
+                                   n.description=$desc, n.cwe_id=$cwe,
+                                   n.api_sequence=$apis
+                     ON MATCH SET n.occurrence_count = coalesce(n.occurrence_count, 1) + 1""",
                   id=node.id, desc=node.description, cwe=node.cwe_id,
                   apis=node.api_sequence)
 
