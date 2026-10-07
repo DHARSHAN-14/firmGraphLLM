@@ -1,1 +1,4 @@
-"""Package init."""
+"""evaluation.experiments package."""
+from .experiment_runner import ExperimentRunner
+
+__all__ = ["ExperimentRunner"]

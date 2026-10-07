@@ -44,6 +44,7 @@ ENV/
 
 # Neo4j Local Data
 data/neo4j/
+knowledge_graph/db_data/
 
 # Compiled Binaries & Large Generated Datasets
 data/processed/*

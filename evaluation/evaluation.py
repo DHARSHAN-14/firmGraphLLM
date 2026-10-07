@@ -241,12 +241,21 @@ class ExperimentRunner:
 
         comparison   = metrics.compare_systems(base_results, fg_results,
                                                ("LATTE_baseline", "FirmGraph_LLM"))
+        def _is_vuln(item):
+            if isinstance(item, dict):
+                res = item.get("result")
+                if res and hasattr(res, "vulnerable"):
+                    return bool(res.vulnerable)
+                return bool(item.get("vulnerable", False))
+            res = getattr(item, "result", None)
+            return bool(res.vulnerable if res else getattr(item, "vulnerable", False))
+
         result = {
             "experiment":      binary_name,
             "flows_analyzed":  len(flows),
             "comparison":      comparison,
-            "latte_vulnerable":    sum(1 for r in base_results if getattr(r, "result", None) and r.result.vulnerable),
-            "firmgraph_vulnerable": sum(1 for r in fg_results if getattr(r, "result", None) and r.result.vulnerable),
+            "latte_vulnerable":    sum(1 for r in base_results if _is_vuln(r)),
+            "firmgraph_vulnerable": sum(1 for r in fg_results if _is_vuln(r)),
         }
         log.info(f"Results: LATTE={comparison['LATTE_baseline']['f1_score']:.3f} F1 | "
                  f"FirmGraph={comparison['FirmGraph_LLM']['f1_score']:.3f} F1")

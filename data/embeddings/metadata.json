@@ -1,0 +1,79 @@
+[
+  {
+    "function_id": "CWE78_OS_Command_Injection__char_connect_socket_execl_01::CWE78_OS_Command_Injection__char_connect_socket_execl_01_bad",
+    "name": "CWE78_OS_Command_Injection__char_connect_socket_execl_01_bad",
+    "binary": "CWE78_OS_Command_Injection__char_connect_socket_execl_01",
+    "cwe": "CWE-78",
+    "pseudocode": "void CWE78_OS_Command_Injection__char_connect_socket_execl_01_bad(void)\n{\n    char * data;\n    char dataBuffer[100] = \"\";\n    data = dataBuffer;\n    {\n        struct sockaddr_in service;\n        int recvResult;\n        int connectSocket = -1;\n        connectSocket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);\n        if (connectSocket != -1)\n        {\n            service.sin_family = AF_INET;\n            service.sin_addr.s_addr = inet_addr(\"127.0.0.1\");\n            service.sin_port = htons(27015);\n            if (connect(connectSocket, (struct sockaddr*)&service, sizeof(service)) != -1)\n            {\n                recvResult = recv(connectSocket, (char *)(data + strlen(data)), (int)(100 - strlen(data) - 1), 0);\n                if (recvResult > 0)\n                {\n                    data[recvResult] = '\\0';\n                }\n            }\n            CLOSE_SOCKET(connectSocket);\n        }\n    }\n    /* POTENTIAL FLAW: Execute command without validating input */\n    execl(\"/bin/sh\", \"/bin/sh\", \"-c\", data, NULL);\n}",
+    "api_calls": [
+      "socket",
+      "connect",
+      "recv",
+      "execl"
+    ],
+    "flow_id": "CWE78_OS_Command_Injection__char_connect_socket_execl_01_bad_flow"
+  },
+  {
+    "function_id": "CWE120_Buffer_Size__char_environment_strcpy_01::CWE120_Buffer_Size__char_environment_strcpy_01_bad",
+    "name": "CWE120_Buffer_Size__char_environment_strcpy_01_bad",
+    "binary": "CWE120_Buffer_Size__char_environment_strcpy_01",
+    "cwe": "CWE-120",
+    "pseudocode": "void CWE120_Buffer_Size__char_environment_strcpy_01_bad(void)\n{\n    char * data;\n    char dataBuffer[100];\n    data = dataBuffer;\n    char * environment = getenv(\"ADD\");\n    if (environment != NULL)\n    {\n        data = environment;\n    }\n    {\n        char dest[50] = \"\";\n        /* POTENTIAL FLAW: Possible buffer overflow if data is larger than dest */\n        strcpy(dest, data);\n    }\n}",
+    "api_calls": [
+      "getenv",
+      "strcpy"
+    ],
+    "flow_id": "CWE120_Buffer_Size__char_environment_strcpy_01_bad_flow"
+  },
+  {
+    "function_id": "CWE134_Uncontrolled_Format_String__char_socket_printf_01::CWE134_Uncontrolled_Format_String__char_socket_printf_01_bad",
+    "name": "CWE134_Uncontrolled_Format_String__char_socket_printf_01_bad",
+    "binary": "CWE134_Uncontrolled_Format_String__char_socket_printf_01",
+    "cwe": "CWE-134",
+    "pseudocode": "void CWE134_Uncontrolled_Format_String__char_socket_printf_01_bad(void)\n{\n    char * data;\n    char dataBuffer[100] = \"\";\n    data = dataBuffer;\n    int connectSocket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);\n    if (connectSocket != -1) {\n        recv(connectSocket, data, 100 - 1, 0);\n    }\n    /* POTENTIAL FLAW: Do not specify the format allowing a possible format string vulnerability */\n    printf(data);\n}",
+    "api_calls": [
+      "socket",
+      "recv",
+      "printf"
+    ],
+    "flow_id": "CWE134_Uncontrolled_Format_String__char_socket_printf_01_bad_flow"
+  },
+  {
+    "function_id": "CWE78_OS_Command_Injection__char_environment_system_01::CWE78_OS_Command_Injection__char_environment_system_01_bad",
+    "name": "CWE78_OS_Command_Injection__char_environment_system_01_bad",
+    "binary": "CWE78_OS_Command_Injection__char_environment_system_01",
+    "cwe": "CWE-78",
+    "pseudocode": "void CWE78_OS_Command_Injection__char_environment_system_01_bad(void)\n{\n    char * data;\n    char dataBuffer[100] = \"\";\n    data = dataBuffer;\n    char * env = getenv(\"CMD\");\n    if (env != NULL) {\n        strcat(data, env);\n    }\n    /* POTENTIAL FLAW: Execute command in data possibly leading to command injection */\n    system(data);\n}",
+    "api_calls": [
+      "getenv",
+      "strcat",
+      "system"
+    ],
+    "flow_id": "CWE78_OS_Command_Injection__char_environment_system_01_bad_flow"
+  },
+  {
+    "function_id": "CWE120_Buffer_Size__char_gets_01::CWE120_Buffer_Size__char_gets_01_bad",
+    "name": "CWE120_Buffer_Size__char_gets_01_bad",
+    "binary": "CWE120_Buffer_Size__char_gets_01",
+    "cwe": "CWE-120",
+    "pseudocode": "void CWE120_Buffer_Size__char_gets_01_bad(void)\n{\n    char * data;\n    char dataBuffer[10] = \"\";\n    data = dataBuffer;\n    /* POTENTIAL FLAW: gets() allows buffer overflows */\n    gets(data);\n}",
+    "api_calls": [
+      "gets"
+    ],
+    "flow_id": "CWE120_Buffer_Size__char_gets_01_bad_flow"
+  },
+  {
+    "function_id": "CWE120_Buffer_Size__char_socket_memcpy_01::CWE120_Buffer_Size__char_socket_memcpy_01_bad",
+    "name": "CWE120_Buffer_Size__char_socket_memcpy_01_bad",
+    "binary": "CWE120_Buffer_Size__char_socket_memcpy_01",
+    "cwe": "CWE-120",
+    "pseudocode": "void CWE120_Buffer_Size__char_socket_memcpy_01_bad(void)\n{\n    char * data;\n    char dataBuffer[100] = \"\";\n    data = dataBuffer;\n    int connectSocket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);\n    if (connectSocket != -1) {\n        recv(connectSocket, data, 100 - 1, 0);\n    }\n    {\n        char dest[50] = \"\";\n        /* POTENTIAL FLAW: Possible buffer overflow if data is larger than dest */\n        memcpy(dest, data, strlen(data) * sizeof(char));\n    }\n}",
+    "api_calls": [
+      "socket",
+      "recv",
+      "strlen",
+      "memcpy"
+    ],
+    "flow_id": "CWE120_Buffer_Size__char_socket_memcpy_01_bad_flow"
+  }
+]

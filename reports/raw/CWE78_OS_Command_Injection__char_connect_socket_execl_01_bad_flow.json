@@ -1,0 +1,12 @@
+{
+  "flow_id": "CWE78_OS_Command_Injection__char_connect_socket_execl_01_bad_flow",
+  "binary_name": "CWE78_OS_Command_Injection__char_connect_socket_execl_01",
+  "vulnerable": false,
+  "cwe": "Error",
+  "confidence": 0.0,
+  "explanation": "Analysis error: Ollama chat error: Server disconnected without sending a response.",
+  "taint_trace": "",
+  "patch_suggestion": "",
+  "analysis_time_sec": 0.0,
+  "kg_evidence_used": false
+}

@@ -38,15 +38,6 @@ SOURCE_OUTPUT_SCHEMA = {
     "reason":        "str  — one-sentence justification",
 }
 
-VERDICT_OUTPUT_SCHEMA = {
-    "vulnerable":       "bool   — True if a real vulnerability exists in this flow",
-    "cwe":              "str    — e.g. 'CWE-78' or 'None'",
-    "confidence":       "float  — 0.0 to 1.0",
-    "explanation":      "str    — why the vulnerability exists (or doesn't)",
-    "taint_trace":      "str    — step-by-step trace of tainted data through the flow",
-    "patch_suggestion": "str    — concrete fix recommendation",
-}
-
 
 @dataclass
 class PromptTemplates:
@@ -263,18 +254,31 @@ If similar patterns were found vulnerable in prior analyses, cite them in your e
 ```
 
 ## Vulnerability Inspection
-
+ 
 The potential sink is `{sink_func}()` at param[{sink_param}].
-
+ 
 Based on your full taint analysis:
 1. Does tainted data reach `{sink_func}` param[{sink_param}] WITHOUT adequate sanitization?
-2. Does this constitute a real vulnerability?
-3. What CWE type applies?
+2. Does this constitute a real vulnerability? (true / false)
+3. What CWE applies?
+   - Command execution sinks (`system`, `execl`, `popen`) -> "CWE-78"
+   - Buffer copy / unbounded input sinks (`strcpy`, `strcat`, `gets`, `memcpy`) -> "CWE-120"
+   - Format string sinks (`printf`, `sprintf`, `syslog` where format argument is tainted) -> "CWE-134"
+   - Integer overflow before buffer allocation -> "CWE-190"
+   - Unchecked loop condition / resource exhaustion -> "CWE-606"
+   - If sanitized or safe -> "None" (and set vulnerable to false)
 
-Supported CWEs: CWE-78 (OS Command Injection), CWE-120 (Buffer Overflow), CWE-134 (Format String), CWE-190 (Integer Overflow), CWE-606 (Unchecked Loop Condition)
-
-Output ONLY valid JSON (no markdown fences, no extra text):
-{json.dumps(VERDICT_OUTPUT_SCHEMA, indent=2)}"""
+Output ONLY valid JSON (no markdown fences, no extra text) matching this format:
+```json
+{{
+  "vulnerable": <true or false>,
+  "cwe": "<CWE-78 | CWE-120 | CWE-134 | CWE-190 | CWE-606 | None>",
+  "confidence": <float from 0.0 to 1.0>,
+  "explanation": "<why the vulnerability exists or why it is safe>",
+  "taint_trace": "<variable propagation trace from source to sink>",
+  "patch_suggestion": "<concrete fix recommendation>"
+}}
+```"""
 
 
 # Module-level singleton

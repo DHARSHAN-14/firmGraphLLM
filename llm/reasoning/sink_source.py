@@ -113,11 +113,11 @@ class SinkSourceIdentifier:
                 cwe_types=parsed.get("cwe_types", []),
                 reason=parsed.get("reason", ""),
             )
+            self._sink_cache[func_name] = info
         except Exception as e:
             log.warning(f"Sink identification failed for '{func_name}': {e}. Defaulting to not-a-sink.")
             info = SinkInfo(name=func_name, is_sink=False, reason=f"Error: {e}")
 
-        self._sink_cache[func_name] = info
         log.info(f"Sink: {func_name} → is_sink={info.is_sink}, cwes={info.cwe_types}")
         return info
 
@@ -140,11 +140,11 @@ class SinkSourceIdentifier:
                 output_params=parsed.get("output_params", []),
                 reason=parsed.get("reason", ""),
             )
+            self._source_cache[func_name] = info
         except Exception as e:
             log.warning(f"Source identification failed for '{func_name}': {e}. Defaulting to not-a-source.")
             info = SourceInfo(name=func_name, is_source=False, reason=f"Error: {e}")
 
-        self._source_cache[func_name] = info
         log.info(f"Source: {func_name} → is_source={info.is_source}, params={info.output_params}")
         return info
 
@@ -238,12 +238,21 @@ class SinkSourceIdentifier:
         except json.JSONDecodeError:
             pass
 
-        # Find the first JSON object in the text
-        match = re.search(r"\{.*\}", text, re.DOTALL)
-        if match:
+        # Try finding outer JSON block first
+        start_idx = text.find("{")
+        end_idx = text.rfind("}")
+        if start_idx != -1 and end_idx != -1 and end_idx > start_idx:
+            candidate = text[start_idx : end_idx + 1]
             try:
-                return json.loads(match.group())
+                return json.loads(candidate)
             except json.JSONDecodeError:
                 pass
+
+        # Try smaller non-greedy JSON blocks
+        for m in re.finditer(r"\{.*?\}", text, re.DOTALL):
+            try:
+                return json.loads(m.group())
+            except json.JSONDecodeError:
+                continue
 
         raise ValueError(f"Could not parse JSON from LLM response: {text[:200]}")

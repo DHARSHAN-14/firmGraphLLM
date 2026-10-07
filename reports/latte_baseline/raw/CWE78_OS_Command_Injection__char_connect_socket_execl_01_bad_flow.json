@@ -3,10 +3,10 @@
   "binary_name": "CWE78_OS_Command_Injection__char_connect_socket_execl_01",
   "vulnerable": true,
   "cwe": "CWE-78",
-  "confidence": 1.0,
-  "explanation": "The tainted data from the `recv` function is directly passed to the `execl` function without adequate sanitization, making it a potential sink for command injection.",
-  "taint_trace": "dataBuffer -> data (alias) -> execl param[2]",
-  "patch_suggestion": "Sanitize the input data before passing it to `execl`. For example, use `execle` with an empty environment or validate/sanitize the input.",
-  "analysis_time_sec": 548.46,
+  "confidence": 0.95,
+  "explanation": "Tainted data reaches the `execl` param[0] without adequate sanitization.",
+  "taint_trace": "source_param -> var -> sink_param",
+  "patch_suggestion": "Sanitize or validate user input before passing to the `execl` function.",
+  "analysis_time_sec": 212.7,
   "kg_evidence_used": false
 }

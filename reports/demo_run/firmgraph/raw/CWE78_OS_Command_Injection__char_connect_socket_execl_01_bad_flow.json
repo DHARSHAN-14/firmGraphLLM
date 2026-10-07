@@ -1,0 +1,12 @@
+{
+  "flow_id": "CWE78_OS_Command_Injection__char_connect_socket_execl_01_bad_flow",
+  "binary_name": "CWE78_OS_Command_Injection__char_connect_socket_execl_01",
+  "vulnerable": true,
+  "cwe": "CWE-78",
+  "confidence": 0.95,
+  "explanation": "Tainted data reaches the sink function without sanitization.",
+  "taint_trace": "source_param -> var -> sink_param",
+  "patch_suggestion": "Sanitize or validate user input before passing to the sink function.",
+  "analysis_time_sec": 211.48,
+  "kg_evidence_used": true
+}

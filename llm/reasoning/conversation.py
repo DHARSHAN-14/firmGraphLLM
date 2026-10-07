@@ -34,6 +34,7 @@ class FunctionRecord:
     address:    str  = ""
     is_source:  bool = False
     is_sink:    bool = False
+    source_param: int = 0   # param index that receives tainted data when is_source=True
     api_calls:  list[str] = field(default_factory=list)
 
     def to_dict(self) -> dict:
@@ -191,7 +192,7 @@ class VulnerabilityAnalyzer:
         for i, func in enumerate(chain[1:-1], start=1):
             # Detect if this intermediate function is also a source
             new_src_func  = func.name if func.is_source else ""
-            new_src_param = df.source_param if func.is_source else -1
+            new_src_param = func.source_param if func.is_source else -1
 
             middle_prompt = TEMPLATES.middle(
                 function_name=func.name,
@@ -225,15 +226,27 @@ class VulnerabilityAnalyzer:
         verdict = self._parse_verdict(end_response)
         elapsed = time.time() - t0
 
+        vulnerable_val = verdict.get("vulnerable", False)
+        if isinstance(vulnerable_val, str):
+            vulnerable = "true" in vulnerable_val.lower() and "false" not in vulnerable_val.lower()
+        else:
+            vulnerable = bool(vulnerable_val)
+
+        confidence_val = verdict.get("confidence", 0.5)
+        try:
+            confidence = float(confidence_val)
+        except (ValueError, TypeError):
+            confidence = 0.9 if vulnerable else 0.1
+
         result = VulnerabilityResult(
             flow_id=df.flow_id,
             binary_name=df.binary_name,
-            vulnerable=verdict.get("vulnerable", False),
-            cwe=verdict.get("cwe", "Unknown"),
-            confidence=float(verdict.get("confidence", 0.5)),
-            explanation=verdict.get("explanation", end_response),
-            taint_trace=verdict.get("taint_trace", ""),
-            patch_suggestion=verdict.get("patch_suggestion", ""),
+            vulnerable=vulnerable,
+            cwe=str(verdict.get("cwe", "Unknown")),
+            confidence=confidence,
+            explanation=str(verdict.get("explanation", end_response)),
+            taint_trace=str(verdict.get("taint_trace", "")),
+            patch_suggestion=str(verdict.get("patch_suggestion", "")),
             raw_conversation=messages,
             analysis_time_sec=elapsed,
             kg_evidence_used=bool(start_kg_evidence or end_kg_evidence),
@@ -309,13 +322,14 @@ class VulnerabilityAnalyzer:
         Extract a concise taint summary from the LLM's intermediate response
         to pass as `tainted_inputs` to the next prompt.
         """
-        # Take the last paragraph or up to 400 chars of the response
+        # Take the concluding paragraph without prematurely truncating variable names
         paragraphs = [p.strip() for p in llm_response.split("\n\n") if p.strip()]
         if paragraphs:
-            summary = paragraphs[-1][:400]
+            summary = paragraphs[-1] if len(paragraphs[-1]) <= 1000 else paragraphs[-1][:1000] + "..."
         else:
-            summary = llm_response.strip()[:400]
+            summary = llm_response.strip()[:1000]
         return f"From `{func_name}`: {summary}"
+
 
     @staticmethod
     def _parse_verdict(text: str) -> dict:
@@ -333,13 +347,22 @@ class VulnerabilityAnalyzer:
         except json.JSONDecodeError:
             pass
 
-        # Find the last JSON object in response (greedy to capture nested fields)
-        match = re.search(r"\{.*\}", text, re.DOTALL)
-        if match:
+        # Try finding JSON block between outer braces
+        start_idx = text.find("{")
+        end_idx = text.rfind("}")
+        if start_idx != -1 and end_idx != -1 and end_idx > start_idx:
+            candidate = text[start_idx : end_idx + 1]
             try:
-                return json.loads(match.group())
+                return json.loads(candidate)
             except json.JSONDecodeError:
                 pass
+
+        # Try smaller non-greedy JSON blocks
+        for m in re.finditer(r"\{.*?\}", text, re.DOTALL):
+            try:
+                return json.loads(m.group())
+            except json.JSONDecodeError:
+                continue
 
         # Fallback: heuristic parsing from natural language
         log.warning("Could not parse JSON verdict; using heuristic fallback.")

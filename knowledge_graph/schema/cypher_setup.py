@@ -75,7 +75,8 @@ def seed_cwe_data(driver) -> None:
         for cwe in CWE_SEED:
             if cwe["parent_id"]:
                 session.run(
-                    """MATCH (parent:CWE {id: $pid}), (child:CWE {id: $cid})
+                    """MATCH (parent:CWE {id: $pid})
+                       MATCH (child:CWE {id: $cid})
                        MERGE (parent)-[:PARENT_OF]->(child)""",
                     pid=cwe["parent_id"], cid=cwe["id"],
                 )

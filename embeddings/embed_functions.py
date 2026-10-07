@@ -120,11 +120,14 @@ def load_function_texts(input_path: Path) -> list[dict]:
     functions = []
 
     if input_path.is_file():
-        data = json.loads(input_path.read_text())
-        if isinstance(data, list):
-            functions.extend(data)
-        else:
-            functions.append(data)
+        try:
+            data = json.loads(input_path.read_text())
+            if isinstance(data, list):
+                functions.extend(data)
+            else:
+                functions.append(data)
+        except Exception as e:
+            log.warning(f"Error reading {input_path.name}: {e}")
     elif input_path.is_dir():
         for json_file in sorted(input_path.rglob("*.json")):
             try:
@@ -191,6 +194,8 @@ def query_similar(
     Find the top-K most similar functions to a query code string.
     Returns list of {score, metadata} dicts.
     """
+    if index is None or index.ntotal == 0:
+        return []
     q_emb = embed_batch([query_text], tokenizer, model, config)
     scores, indices = index.search(q_emb, top_k)
 

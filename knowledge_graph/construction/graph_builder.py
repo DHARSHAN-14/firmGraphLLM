@@ -83,12 +83,25 @@ class GraphBuilder:
     def add_relationship(self, rel: Relationship) -> None:
         props_str = ", ".join(f"r.{k}=${k}" for k in rel.properties)
         set_clause = f"SET {props_str}" if props_str else ""
+        # Sequential MATCH avoids Cartesian product warning in Neo4j DBMS
         cypher = (
-            f"MATCH (a {{id:$from_id}}), (b {{id:$to_id}}) "
+            f"MATCH (a {{id:$from_id}}) "
+            f"MATCH (b {{id:$to_id}}) "
             f"MERGE (a)-[r:{rel.rel_type.value}]->(b) {set_clause}"
         )
         with self._driver.session() as s:
             s.run(cypher, from_id=rel.from_id, to_id=rel.to_id, **rel.properties)
+
+    def add_similar_relationship(self, func_a_id: str, func_b_id: str, score: float) -> None:
+        """Create a weighted SIMILAR_TO edge between two functions."""
+        cypher = """
+        MATCH (a:Function {id:$fa})
+        MATCH (b:Function {id:$fb})
+        MERGE (a)-[r:SIMILAR_TO]->(b)
+        SET r.score = $score
+        """
+        with self._driver.session() as s:
+            s.run(cypher, fa=func_a_id, fb=func_b_id, score=score)
 
     # ── Batch operations ───────────────────────────────────────────────────
 

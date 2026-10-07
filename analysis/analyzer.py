@@ -80,7 +80,15 @@ class FirmGraphAnalyzer:
         )
 
         # Rank
-        ranked = self.ranker.rank(results, kg_scores=kg_scores)
+        func_names = {
+            df.flow_id: (df.function_chain[-1].name if df.function_chain else "unknown")
+            for df in flows
+        }
+        ranked = self.ranker.rank(
+            results,
+            kg_scores=kg_scores,
+            function_names=func_names,
+        )
 
         # Ingest vulnerabilities into KG
         if self.graph_builder:
@@ -109,8 +117,16 @@ class FirmGraphAnalyzer:
         report = self.ranker.to_report(ranked)
         report["binary_name"] = binary_name
         out_path = out_dir / f"{binary_name}_ranked.json"
-        out_path.write_text(json.dumps(report, indent=2))
-        log.info(f"Report saved → {out_path}")
+        try:
+            out_path.write_text(json.dumps(report, indent=2))
+            log.info(f"Report saved → {out_path}")
+            # Also generate detailed markdown and JSON via ReportGenerator
+            rep_gen = ReportGenerator()
+            detailed = rep_gen.generate_report(ranked, binary_name, self.config)
+            rep_gen.save_json(detailed, out_dir / f"{binary_name}_report.json")
+            rep_gen.save_markdown(detailed, out_dir / f"{binary_name}_report.md")
+        except Exception as e:
+            log.error(f"Failed to save reports to {out_dir}: {e}")
         return out_path
 
 

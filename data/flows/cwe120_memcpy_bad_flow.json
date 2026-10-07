@@ -1,0 +1,22 @@
+[
+  {
+    "flow_id": "CWE120_Buffer_Size__char_socket_memcpy_01_bad_flow",
+    "binary_name": "CWE120_Buffer_Size__char_socket_memcpy_01",
+    "source_func": "recv",
+    "source_param": 1,
+    "sink_func": "memcpy",
+    "sink_param": 1,
+    "expected_cwe": "CWE-120",
+    "function_chain": [
+      {
+        "name": "CWE120_Buffer_Size__char_socket_memcpy_01_bad",
+        "pseudocode": "void CWE120_Buffer_Size__char_socket_memcpy_01_bad(void)\n{\n    char * data;\n    char dataBuffer[100] = \"\";\n    data = dataBuffer;\n    int connectSocket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);\n    if (connectSocket != -1) {\n        recv(connectSocket, data, 100 - 1, 0);\n    }\n    {\n        char dest[50] = \"\";\n        /* POTENTIAL FLAW: Possible buffer overflow if data is larger than dest */\n        memcpy(dest, data, strlen(data) * sizeof(char));\n    }\n}",
+        "binary": "CWE120_Buffer_Size__char_socket_memcpy_01",
+        "address": "0x401700",
+        "is_source": true,
+        "is_sink": true,
+        "api_calls": ["socket", "recv", "strlen", "memcpy"]
+      }
+    ]
+  }
+]

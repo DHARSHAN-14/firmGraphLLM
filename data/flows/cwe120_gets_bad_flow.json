@@ -1,0 +1,22 @@
+[
+  {
+    "flow_id": "CWE120_Buffer_Size__char_gets_01_bad_flow",
+    "binary_name": "CWE120_Buffer_Size__char_gets_01",
+    "source_func": "gets",
+    "source_param": 0,
+    "sink_func": "gets",
+    "sink_param": 0,
+    "expected_cwe": "CWE-120",
+    "function_chain": [
+      {
+        "name": "CWE120_Buffer_Size__char_gets_01_bad",
+        "pseudocode": "void CWE120_Buffer_Size__char_gets_01_bad(void)\n{\n    char * data;\n    char dataBuffer[10] = \"\";\n    data = dataBuffer;\n    /* POTENTIAL FLAW: gets() allows buffer overflows */\n    gets(data);\n}",
+        "binary": "CWE120_Buffer_Size__char_gets_01",
+        "address": "0x401600",
+        "is_source": true,
+        "is_sink": true,
+        "api_calls": ["gets"]
+      }
+    ]
+  }
+]

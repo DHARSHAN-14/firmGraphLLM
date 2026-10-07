@@ -1,0 +1,56 @@
+{
+  "binary_analyzed": "CWE78_OS_Command_Injection__char_connect_socket_execl_01",
+  "timestamp": "2026-10-05 10:26:45",
+  "LATTE_baseline": {
+    "label": "LATTE_Baseline_B2",
+    "total": 1,
+    "vulnerable": 1,
+    "cwe_distribution": {
+      "CWE-78": 1
+    },
+    "findings": [
+      {
+        "rank": 1,
+        "flow_id": "CWE78_OS_Command_Injection__char_connect_socket_execl_01_bad_flow",
+        "cwe": "CWE-78",
+        "vulnerable": true,
+        "confidence": 0.95,
+        "kg_evidence_score": 0.0,
+        "final_score": 0.675,
+        "kg_evidence_used": false,
+        "explanation": "Tainted data reaches the `execl` param[0] without adequate sanitization.",
+        "taint_trace": "source_param -> var -> sink_param",
+        "patch_suggestion": "Sanitize or validate user input before passing to the `execl` function.",
+        "analysis_time_sec": 212.7
+      }
+    ]
+  },
+  "FirmGraph_LLM": {
+    "label": "FirmGraph_LLM_P",
+    "total": 1,
+    "vulnerable": 1,
+    "cwe_distribution": {
+      "CWE-78": 1
+    },
+    "findings": [
+      {
+        "rank": 1,
+        "flow_id": "CWE78_OS_Command_Injection__char_connect_socket_execl_01_bad_flow",
+        "cwe": "CWE-78",
+        "vulnerable": true,
+        "confidence": 0.95,
+        "kg_evidence_score": 0.1,
+        "final_score": 0.705,
+        "kg_evidence_used": true,
+        "explanation": "Tainted data reaches the sink function without sanitization.",
+        "taint_trace": "source_param -> var -> sink_param",
+        "patch_suggestion": "Sanitize or validate user input before passing to the sink function.",
+        "analysis_time_sec": 211.48
+      }
+    ]
+  },
+  "delta": {
+    "additional_vulnerabilities": 0,
+    "kg_evidence_used": 1
+  }
+}

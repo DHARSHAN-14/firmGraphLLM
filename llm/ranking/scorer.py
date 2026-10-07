@@ -128,9 +128,9 @@ class VulnerabilityRanker:
                 + self.kg_weight  * kg_ev
                 + self.cwe_weight * cwe_sev
             )
-            # Non-vulnerable results get a negative score so they sort last
+            # Non-vulnerable results get a strictly negative score so they sort after all vulnerable results
             if not result.vulnerable:
-                score = -abs(score)
+                score = -abs(score) - 1.0
 
             ranked.append(RankedVulnerability(
                 rank=0,  # filled after sort

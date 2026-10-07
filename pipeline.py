@@ -67,6 +67,11 @@ def build_firmgraph(args):
         kg_retrieval = KGRetrieval(builder._driver)
     except Exception as e:
         log.warning(f"Neo4j unavailable ({e}) — running without KG (same as LATTE baseline)")
+        if "builder" in locals() and builder:
+            try:
+                builder.close()
+            except Exception:
+                pass
         builder = kg_retrieval = None
 
     # Retrieval
@@ -93,7 +98,7 @@ def main():
                         default="latte")
     parser.add_argument("--flows",   required=True, help="Path to DangerousFlows JSON")
     parser.add_argument("--binary",  required=True, help="Binary name (for reports)")
-    parser.add_argument("--model",   default="qwen2.5-coder:7b")
+    parser.add_argument("--model",   default="qwen2.5:1.5b")
     parser.add_argument("--temperature", type=float, default=0.4)
     parser.add_argument("--output",  default="reports/")
     parser.add_argument("--gt",      default="data/juliet/ground_truth.json",

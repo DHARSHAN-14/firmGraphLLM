@@ -1,0 +1,22 @@
+[
+  {
+    "flow_id": "CWE78_OS_Command_Injection__char_environment_system_01_bad_flow",
+    "binary_name": "CWE78_OS_Command_Injection__char_environment_system_01",
+    "source_func": "getenv",
+    "source_param": -1,
+    "sink_func": "system",
+    "sink_param": 0,
+    "expected_cwe": "CWE-78",
+    "function_chain": [
+      {
+        "name": "CWE78_OS_Command_Injection__char_environment_system_01_bad",
+        "pseudocode": "void CWE78_OS_Command_Injection__char_environment_system_01_bad(void)\n{\n    char * data;\n    char dataBuffer[100] = \"\";\n    data = dataBuffer;\n    char * env = getenv(\"CMD\");\n    if (env != NULL) {\n        strcat(data, env);\n    }\n    /* POTENTIAL FLAW: Execute command in data possibly leading to command injection */\n    system(data);\n}",
+        "binary": "CWE78_OS_Command_Injection__char_environment_system_01",
+        "address": "0x401500",
+        "is_source": true,
+        "is_sink": true,
+        "api_calls": ["getenv", "strcat", "system"]
+      }
+    ]
+  }
+]

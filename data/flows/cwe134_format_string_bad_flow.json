@@ -1,0 +1,22 @@
+[
+  {
+    "flow_id": "CWE134_Uncontrolled_Format_String__char_socket_printf_01_bad_flow",
+    "binary_name": "CWE134_Uncontrolled_Format_String__char_socket_printf_01",
+    "source_func": "recv",
+    "source_param": 1,
+    "sink_func": "printf",
+    "sink_param": 0,
+    "expected_cwe": "CWE-134",
+    "function_chain": [
+      {
+        "name": "CWE134_Uncontrolled_Format_String__char_socket_printf_01_bad",
+        "pseudocode": "void CWE134_Uncontrolled_Format_String__char_socket_printf_01_bad(void)\n{\n    char * data;\n    char dataBuffer[100] = \"\";\n    data = dataBuffer;\n    int connectSocket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);\n    if (connectSocket != -1) {\n        recv(connectSocket, data, 100 - 1, 0);\n    }\n    /* POTENTIAL FLAW: Do not specify the format allowing a possible format string vulnerability */\n    printf(data);\n}",
+        "binary": "CWE134_Uncontrolled_Format_String__char_socket_printf_01",
+        "address": "0x401400",
+        "is_source": true,
+        "is_sink": true,
+        "api_calls": ["socket", "recv", "printf"]
+      }
+    ]
+  }
+]

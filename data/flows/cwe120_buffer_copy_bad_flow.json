@@ -1,0 +1,22 @@
+[
+  {
+    "flow_id": "CWE120_Buffer_Size__char_environment_strcpy_01_bad_flow",
+    "binary_name": "CWE120_Buffer_Size__char_environment_strcpy_01",
+    "source_func": "getenv",
+    "source_param": -1,
+    "sink_func": "strcpy",
+    "sink_param": 1,
+    "expected_cwe": "CWE-120",
+    "function_chain": [
+      {
+        "name": "CWE120_Buffer_Size__char_environment_strcpy_01_bad",
+        "pseudocode": "void CWE120_Buffer_Size__char_environment_strcpy_01_bad(void)\n{\n    char * data;\n    char dataBuffer[100];\n    data = dataBuffer;\n    char * environment = getenv(\"ADD\");\n    if (environment != NULL)\n    {\n        data = environment;\n    }\n    {\n        char dest[50] = \"\";\n        /* POTENTIAL FLAW: Possible buffer overflow if data is larger than dest */\n        strcpy(dest, data);\n    }\n}",
+        "binary": "CWE120_Buffer_Size__char_environment_strcpy_01",
+        "address": "0x401300",
+        "is_source": true,
+        "is_sink": true,
+        "api_calls": ["getenv", "strcpy"]
+      }
+    ]
+  }
+]
