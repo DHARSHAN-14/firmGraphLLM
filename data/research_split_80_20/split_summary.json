@@ -1,0 +1,67 @@
+{
+  "dataset_name": "Juliet_Test_Suite_v1.3_Linux_x86_64_Firmware_Research_Subset",
+  "methodology": "Stratified Random Sampling (Seed=42, 80/20 Train/Test Split)",
+  "train_ratio": 0.8,
+  "test_ratio": 0.2,
+  "random_seed": 42,
+  "total_testcases": 6232,
+  "train_testcases": 4986,
+  "test_testcases": 1246,
+  "total_binaries": 12464,
+  "train_binaries": 9972,
+  "test_binaries": 2492,
+  "per_cwe_breakdown": {
+    "CWE-78": {
+      "name": "OS Command Injection",
+      "total_testcases": 760,
+      "train_testcases": 608,
+      "test_testcases": 152,
+      "train_pct": 80.0,
+      "test_pct": 20.0,
+      "total_binaries": 1520,
+      "train_binaries": 1216,
+      "test_binaries": 304
+    },
+    "CWE-134": {
+      "name": "Uncontrolled Format String",
+      "total_testcases": 1710,
+      "train_testcases": 1368,
+      "test_testcases": 342,
+      "train_pct": 80.0,
+      "test_pct": 20.0,
+      "total_binaries": 3420,
+      "train_binaries": 2736,
+      "test_binaries": 684
+    },
+    "CWE-190": {
+      "name": "Integer Overflow",
+      "total_testcases": 3420,
+      "train_testcases": 2736,
+      "test_testcases": 684,
+      "train_pct": 80.0,
+      "test_pct": 20.0,
+      "total_binaries": 6840,
+      "train_binaries": 5472,
+      "test_binaries": 1368
+    },
+    "CWE-606": {
+      "name": "Unchecked Loop Condition",
+      "total_testcases": 342,
+      "train_testcases": 274,
+      "test_testcases": 68,
+      "train_pct": 80.12,
+      "test_pct": 19.88,
+      "total_binaries": 684,
+      "train_binaries": 548,
+      "test_binaries": 136
+    }
+  },
+  "files": {
+    "train_manifest": "data/research_split_80_20/train_manifest.json",
+    "test_manifest": "data/research_split_80_20/test_manifest.json",
+    "train_ground_truth": "data/research_split_80_20/train_ground_truth.json",
+    "test_ground_truth": "data/research_split_80_20/test_ground_truth.json",
+    "train_directory": "data/research_split_80_20/train",
+    "test_directory": "data/research_split_80_20/test"
+  }
+}

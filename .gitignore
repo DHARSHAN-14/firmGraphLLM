@@ -53,6 +53,9 @@ data/firmware/*
 !data/firmware/.gitkeep
 data/juliet/compiled/*
 !data/juliet/.gitkeep
+data/research_split_80_20/train/*
+data/research_split_80_20/test/*
+data/research_split_80_20/_build/*
 
 # Evaluation Results & Models
 models/
