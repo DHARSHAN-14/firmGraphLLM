@@ -174,26 +174,9 @@
               <p class="text-[11px] text-slate-400 mt-0.5">Choose a code sample and AI model to inspect for security threats.</p>
             </div>
 
-            <!-- Quick Demo Testing Banner in Red -->
-            <div class="p-3 rounded-lg bg-red-950/50 border border-red-500/70 shadow-lg shadow-red-950/40">
-              <div class="flex items-center justify-between">
-                <div class="flex items-center space-x-2">
-                  <span class="flex h-2.5 w-2.5 rounded-full bg-red-500 animate-ping"></span>
-                  <span class="text-xs font-bold text-red-300">Quick Test: Base Setup Mistake Demo</span>
-                </div>
-                <button type="button" onclick="selectDemoFlow('demo_sanitized_flow_base_error.json')" class="px-2.5 py-1 bg-red-600 hover:bg-red-500 active:scale-95 text-white rounded text-[11px] font-bold transition flex items-center shadow shadow-red-950/60">
-                  <i class="fa-solid fa-bolt mr-1 text-[10px]"></i> Load Demo
-                </button>
-              </div>
-              <p class="text-[11px] text-red-300/80 mt-1">Shows where Base AI makes a False Positive error on clean sanitized code, while FirmGraph-LLM verifies it safe.</p>
-            </div>
-
             <!-- Flow Selector -->
             <div>
-              <label class="block text-xs font-semibold text-slate-300 mb-1.5 flex items-center justify-between">
-                <span>1. Select Code Sample to Scan:</span>
-                <span class="text-[10px] text-red-400 font-normal">🔴 Red options = Mistake Demos</span>
-              </label>
+              <label class="block text-xs font-semibold text-slate-300 mb-1.5">1. Select Code Sample to Scan:</label>
               <select id="run-flow-select" class="w-full bg-slate-900 border border-darkborder rounded-lg px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-sky-500">
                 <!-- Dynamically populated with friendly names -->
               </select>
@@ -429,7 +412,9 @@
       'cwe120_buffer_copy_bad_flow.json': 'Buffer Overflow via String Copy (strcpy)',
       'cwe120_gets_bad_flow.json': 'Buffer Overflow via Unchecked Input (gets)',
       'cwe120_memcpy_bad_flow.json': 'Buffer Overflow via Memory Copy (memcpy)',
-      'cwe134_format_string_bad_flow.json': 'Format String Flaw via Unvalidated Print (printf)'
+      'cwe134_format_string_bad_flow.json': 'Format String Flaw via Unvalidated Print (printf)',
+      'demo_sanitized_flow_base_error.json': 'Command Injection with Sanitizer Validation (CWE-78)',
+      'demo_multihop_pointer_base_error.json': 'Format String with Multi-Hop Pointer Aliasing (CWE-134)'
     };
 
     const CWE_FRIENDLY = {
@@ -532,33 +517,15 @@
 
         const sel = document.getElementById('run-flow-select');
         sel.innerHTML = '';
-
-        // Sort so demo_ items are at the very top
-        const flows = (data.dangerous_flows || []).sort((a, b) => {
-          const aIsDemo = a.file.startsWith('demo_');
-          const bIsDemo = b.file.startsWith('demo_');
-          if (aIsDemo && !bIsDemo) return -1;
-          if (!aIsDemo && bIsDemo) return 1;
-          return a.file.localeCompare(b.file);
-        });
-
-        flows.forEach(f => {
+        (data.dangerous_flows || []).forEach(f => {
           const friendly = FRIENDLY_NAMES[f.file] || `${f.expected_cwe}: ${f.source} → ${f.sink}`;
           const isDemo = f.file.startsWith('demo_');
-          const style = isDemo ? 'style="color: #f87171; font-weight: bold; background-color: #3b0707;"' : '';
+          const style = isDemo ? 'style="color: #ef4444;"' : '';
           sel.innerHTML += `<option value="${f.file}" ${style}>${friendly}</option>`;
         });
       } catch (e) {
         console.error('Error loading flows:', e);
       }
-    }
-
-    function selectDemoFlow(filename) {
-      const sel = document.getElementById('run-flow-select');
-      sel.value = filename;
-      sel.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      sel.classList.add('ring-2', 'ring-red-500');
-      setTimeout(() => sel.classList.remove('ring-2', 'ring-red-500'), 1500);
     }
 
     async function executeLiveAnalysis() {
@@ -671,15 +638,6 @@
                   <span class="text-[10px] text-slate-500">${isVuln ? 'High Priority' : 'Safe'}</span>
                 </div>
               </div>
-
-              ${data.base_mistake_note ? `
-              <!-- Base Setup Comparison Note -->
-              <div class="p-3.5 rounded-lg bg-red-950/70 border border-red-500/80 text-xs shadow">
-                <span class="font-bold text-red-300 flex items-center mb-1">
-                  <i class="fa-solid fa-triangle-exclamation text-red-400 mr-1.5"></i>Base Setup Comparison Note:
-                </span>
-                <p class="text-red-100 leading-relaxed font-medium">${data.base_mistake_note}</p>
-              </div>` : ''}
 
               <!-- Plain English Explanation -->
               <div class="bg-slate-950 p-3.5 rounded-lg border border-slate-800">
