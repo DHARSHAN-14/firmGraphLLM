@@ -56,6 +56,7 @@ data/juliet/compiled/*
 data/research_split_80_20/train/*
 data/research_split_80_20/test/*
 data/research_split_80_20/_build/*
+data/research_split_80_20/*.jsonl
 
 # Evaluation Results & Models
 models/
