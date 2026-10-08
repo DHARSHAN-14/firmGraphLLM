@@ -1,0 +1,42 @@
+[
+  {
+    "flow_id": "DEMO_Multihop_Pointer_Alias_Flow",
+    "binary_name": "DEMO_CWE134_MultiHop_Wrapper_Exploit",
+    "source_func": "recv",
+    "source_param": 1,
+    "sink_func": "printf",
+    "sink_param": 0,
+    "expected_cwe": "CWE-134",
+    "ground_truth_verdict": "VULNERABLE",
+    "is_sanitized": false,
+    "function_chain": [
+      {
+        "name": "read_network_payload",
+        "pseudocode": "void read_network_payload(int sock, char *buf) {\n    recv(sock, buf, 64, 0);\n}",
+        "binary": "DEMO_CWE134_MultiHop_Wrapper_Exploit",
+        "address": "0x401100",
+        "is_source": true,
+        "is_sink": false,
+        "api_calls": ["recv"]
+      },
+      {
+        "name": "log_wrapper_dispatcher",
+        "pseudocode": "void log_wrapper_dispatcher(char *raw_input) {\n    char *aliased_ptr = raw_input;\n    dispatch_formatted_logger(aliased_ptr);\n}",
+        "binary": "DEMO_CWE134_MultiHop_Wrapper_Exploit",
+        "address": "0x401200",
+        "is_source": false,
+        "is_sink": false,
+        "api_calls": ["dispatch_formatted_logger"]
+      },
+      {
+        "name": "dispatch_formatted_logger",
+        "pseudocode": "void dispatch_formatted_logger(char *fmt_string) {\n    /* POTENTIAL FLAW: Format string vulnerability without specifier */\n    printf(fmt_string);\n}",
+        "binary": "DEMO_CWE134_MultiHop_Wrapper_Exploit",
+        "address": "0x401300",
+        "is_source": false,
+        "is_sink": true,
+        "api_calls": ["printf"]
+      }
+    ]
+  }
+]

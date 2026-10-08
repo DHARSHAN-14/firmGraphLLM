@@ -1,0 +1,24 @@
+[
+  {
+    "flow_id": "DEMO_Sanitized_Input_Base_Mistake_Flow",
+    "binary_name": "DEMO_CWE78_Sanitized_Alphanumeric_Validator",
+    "source_func": "recv",
+    "source_param": 1,
+    "sink_func": "execl",
+    "sink_param": 0,
+    "expected_cwe": "CWE-78",
+    "ground_truth_verdict": "SAFE",
+    "is_sanitized": true,
+    "function_chain": [
+      {
+        "name": "process_sanitized_command",
+        "pseudocode": "void process_sanitized_command(int socket_fd)\n{\n    char cmd[128] = \"\";\n    int bytes = recv(socket_fd, cmd, sizeof(cmd) - 1, 0);\n    if (bytes > 0) {\n        cmd[bytes] = '\\0';\n        /* SANITIZATION DEFENSE: Strict validation blocks injection */\n        if (is_valid_alphanumeric_safe(cmd)) {\n            execl(\"/bin/ls\", \"ls\", cmd, NULL);\n        }\n    }\n}",
+        "binary": "DEMO_CWE78_Sanitized_Alphanumeric_Validator",
+        "address": "0x401350",
+        "is_source": true,
+        "is_sink": true,
+        "api_calls": ["recv", "is_valid_alphanumeric_safe", "execl"]
+      }
+    ]
+  }
+]
