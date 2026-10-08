@@ -501,7 +501,7 @@ async def run_live_analysis(payload: dict):
     if not fpath.exists():
         raise HTTPException(status_code=404, detail=f"Flow file '{flow_file}' not found.")
 
-    from llm.client import OllamaClient
+    from llm.client import HybridLLMClient
     from llm.reasoning.conversation import load_flows_from_json, VulnerabilityAnalyzer
     from llm.ranking.scorer import VulnerabilityRanker
     from knowledge_graph.construction.graph_builder import GraphBuilder
@@ -514,100 +514,8 @@ async def run_live_analysis(payload: dict):
         raise HTTPException(status_code=400, detail="No valid DangerousFlow in specified file.")
     df = flows[0]
 
-    # Special fast-path for baseline comparison demonstration flows
-    if flow_file == "demo_sanitized_flow_base_error.json":
-        if mode == "latte":
-            return {
-                "success": True,
-                "mode": mode,
-                "model": model_name,
-                "flow_id": df.flow_id,
-                "binary_name": df.binary_name,
-                "expected_cwe": df.expected_cwe,
-                "vulnerable": True,
-                "cwe": "CWE-78",
-                "confidence": 0.88,
-                "kg_evidence_score": 0.0,
-                "kg_evidence_items": [],
-                "final_triage_score": 0.44,
-                "explanation": "LATTE Baseline Mistake (False Positive): Pure ungrounded AI identified 'execl' called after 'recv' and hallucinated an active command injection vulnerability, failing to recognize that 'is_valid_alphanumeric_safe' sanitizes the input.",
-                "taint_trace": "recv(socket_fd, cmd) -> [IGNORED SANITIZER] -> execl('/bin/ls', cmd)",
-                "patch_suggestion": "The code is already sanitized! The baseline produced a False Positive due to lack of security memory.",
-                "conversation_turns": 3,
-                "execution_time_sec": 0.25,
-                "ingested_into_graph": False,
-                "base_mistake_note": "❌ BASE SETUP MISTAKE (FALSE POSITIVE): The base LATTE setup suffers from 'Sink Trap' sensory bias. Because it lacks Knowledge Graph memory, it sees 'execl' and falsely reports clean code as vulnerable!",
-            }
-        else:
-            return {
-                "success": True,
-                "mode": mode,
-                "model": model_name,
-                "flow_id": df.flow_id,
-                "binary_name": df.binary_name,
-                "expected_cwe": df.expected_cwe,
-                "vulnerable": False,
-                "cwe": "CWE-78 (Safe Counterpart)",
-                "confidence": 0.95,
-                "kg_evidence_score": 0.85,
-                "kg_evidence_items": [{"type": "VulnPattern", "id": "pattern::CWE-78::safe_alphanumeric", "rel": "VERIFIED_SANITIZER"}],
-                "final_triage_score": 0.12,
-                "explanation": "FirmGraph-LLM Verified Safe: Knowledge Graph pattern matching confirmed that 'is_valid_alphanumeric_safe' acts as a verified taint barrier. Alphanumeric validation ensures user input cannot inject shell operators into execl().",
-                "taint_trace": "recv(socket_fd, cmd) -[BLOCKED by is_valid_alphanumeric_safe]-> execl",
-                "patch_suggestion": "No patch needed: Input is properly validated by the alphanumeric barrier.",
-                "conversation_turns": 3,
-                "execution_time_sec": 0.28,
-                "ingested_into_graph": False,
-                "base_mistake_note": "✅ FIRMGRAPH-LLM SUCCESS (TRUE NEGATIVE): FirmGraph-LLM queried its 10,243-node Security Knowledge Graph, retrieved verified safe sanitizer patterns, and correctly determined the code is SAFE!",
-            }
-    elif flow_file == "demo_multihop_pointer_base_error.json":
-        if mode == "latte":
-            return {
-                "success": True,
-                "mode": mode,
-                "model": model_name,
-                "flow_id": df.flow_id,
-                "binary_name": df.binary_name,
-                "expected_cwe": df.expected_cwe,
-                "vulnerable": False,
-                "cwe": "CWE-134",
-                "confidence": 0.45,
-                "kg_evidence_score": 0.0,
-                "kg_evidence_items": [],
-                "final_triage_score": 0.225,
-                "explanation": "LATTE Baseline Mistake (False Negative): Multi-hop pointer aliasing (read_network_payload -> log_wrapper_dispatcher -> dispatch_formatted_logger) caused context dilution. Ungrounded AI lost track of the pointer and marked it SAFE / UNCERTAIN.",
-                "taint_trace": "recv(sock, buf) -> [Lost pointer alias track across wrapper] -> printf",
-                "patch_suggestion": "Vulnerability was missed by baseline due to multi-function context dilution.",
-                "conversation_turns": 3,
-                "execution_time_sec": 0.24,
-                "ingested_into_graph": False,
-                "base_mistake_note": "❌ BASE SETUP MISTAKE (FALSE NEGATIVE): The base setup lost track of the pointer alias across multiple function calls and missed a critical Format String exploit!",
-            }
-        else:
-            return {
-                "success": True,
-                "mode": mode,
-                "model": model_name,
-                "flow_id": df.flow_id,
-                "binary_name": df.binary_name,
-                "expected_cwe": df.expected_cwe,
-                "vulnerable": True,
-                "cwe": "CWE-134",
-                "confidence": 0.95,
-                "kg_evidence_score": 0.90,
-                "kg_evidence_items": [{"type": "Function", "id": "read_network_payload->log_wrapper_dispatcher->dispatch_formatted_logger", "rel": "CALLS_PATH"}],
-                "final_triage_score": 0.855,
-                "explanation": "FirmGraph-LLM Verified Vulnerable: Neo4j Call Graph traversed the exact reachability path (read_network_payload -> log_wrapper_dispatcher -> dispatch_formatted_logger). Grounded prompt tracked the aliased pointer directly into printf().",
-                "taint_trace": "recv(sock, buf) -> alias_ptr -> printf(fmt_string) [UNCHECKED FORMAT STRING]",
-                "patch_suggestion": "Specify format specifier printf('%s', fmt_string) or use fputs().",
-                "conversation_turns": 3,
-                "execution_time_sec": 0.29,
-                "ingested_into_graph": True,
-                "base_mistake_note": "✅ FIRMGRAPH-LLM SUCCESS (TRUE POSITIVE): Neo4j's topological Call Graph traced the pointer across all 3 wrapper functions, detecting the vulnerability with 95% confidence!",
-            }
-
-    # Initialize client
-    client = OllamaClient(model=model_name, temperature=0.4)
+    # Initialize real client (Hybrid: Cloud API with Ollama local failover)
+    client = HybridLLMClient(model=model_name, temperature=0.4)
     analyzer = VulnerabilityAnalyzer(client)
     ranker = VulnerabilityRanker()
 

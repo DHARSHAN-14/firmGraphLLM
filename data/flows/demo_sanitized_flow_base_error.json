@@ -1,7 +1,7 @@
 [
   {
-    "flow_id": "DEMO_Sanitized_Input_Base_Mistake_Flow",
-    "binary_name": "DEMO_CWE78_Sanitized_Alphanumeric_Validator",
+    "flow_id": "CWE78_OS_Command_Injection__char_connect_socket_execl_01_good_flow",
+    "binary_name": "CWE78_OS_Command_Injection__char_connect_socket_execl_01",
     "source_func": "recv",
     "source_param": 1,
     "sink_func": "execl",
@@ -11,13 +11,13 @@
     "is_sanitized": true,
     "function_chain": [
       {
-        "name": "process_sanitized_command",
-        "pseudocode": "void process_sanitized_command(int socket_fd)\n{\n    char cmd[128] = \"\";\n    int bytes = recv(socket_fd, cmd, sizeof(cmd) - 1, 0);\n    if (bytes > 0) {\n        cmd[bytes] = '\\0';\n        /* SANITIZATION DEFENSE: Strict validation blocks injection */\n        if (is_valid_alphanumeric_safe(cmd)) {\n            execl(\"/bin/ls\", \"ls\", cmd, NULL);\n        }\n    }\n}",
-        "binary": "DEMO_CWE78_Sanitized_Alphanumeric_Validator",
-        "address": "0x401350",
+        "name": "CWE78_OS_Command_Injection__char_connect_socket_execl_01_good",
+        "pseudocode": "void CWE78_OS_Command_Injection__char_connect_socket_execl_01_good(void)\n{\n    char * data;\n    char dataBuffer[100] = \"\";\n    data = dataBuffer;\n    int connectSocket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);\n    if (connectSocket != -1) {\n        recv(connectSocket, data, 100 - 1, 0);\n    }\n    /* DEFENSIVE VALIDATION: Sanitize input to reject shell metacharacters before execution */\n    if (is_valid_command_string(data)) {\n        execl(\"/bin/sh\", \"/bin/sh\", \"-c\", data, NULL);\n    }\n}",
+        "binary": "CWE78_OS_Command_Injection__char_connect_socket_execl_01",
+        "address": "0x401250",
         "is_source": true,
         "is_sink": true,
-        "api_calls": ["recv", "is_valid_alphanumeric_safe", "execl"]
+        "api_calls": ["socket", "recv", "is_valid_command_string", "execl"]
       }
     ]
   }
