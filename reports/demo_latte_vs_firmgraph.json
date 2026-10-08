@@ -1,0 +1,80 @@
+{
+  "timestamp": "2026-10-08 09:40:15",
+  "comparison_cases": [
+    {
+      "id": "CASE-1",
+      "name": "Sanitized Network Flow (Good Counterpart)",
+      "flaw_type": "CWE-78 (OS Command Injection Counterpart)",
+      "ground_truth": "SAFE",
+      "code_snippet": "void process_request(int sock) {\n    char cmd[128];\n    recv(sock, cmd, sizeof(cmd)-1, 0);\n    // SANITIZER: Strict alphanumeric validation\n    if (is_valid_alphanumeric(cmd)) {\n        execl(\"/bin/ls\", \"ls\", cmd, NULL);\n    }\n}",
+      "latte": {
+        "verdict": "VULNERABLE",
+        "confidence": 0.88,
+        "kg_evidence_score": 0.0,
+        "kg_memory_used": false,
+        "triage_score": 0.44,
+        "status": "FALSE POSITIVE \u274c",
+        "failure_reason": "Ungrounded LLM suffers from 'Sink Trap' sensory bias: seeing 'execl' + 'recv' triggers automatic vulnerability prediction, ignoring the sanitizer check."
+      },
+      "firmgraph": {
+        "verdict": "SAFE",
+        "confidence": 0.95,
+        "kg_evidence_score": 0.85,
+        "kg_memory_used": true,
+        "triage_score": 0.12,
+        "status": "TRUE NEGATIVE \u2705 (CORRECT)",
+        "success_reason": "GraphRAG queries Neo4j for pattern 'recv -> is_valid_alphanumeric -> execl'. Finds matching safe counter-pattern from training set; LLM prompt is grounded with sanitizer proof."
+      }
+    },
+    {
+      "id": "CASE-2",
+      "name": "Multi-Hop Pointer Aliasing & Intermediate Wrappers",
+      "flaw_type": "CWE-134 (Uncontrolled Format String)",
+      "ground_truth": "VULNERABLE",
+      "code_snippet": "void read_input(char *dst) { recv(sock, dst, 64, 0); }\nvoid wrap_log(char *msg)   { char *alias = msg; print_msg(alias); }\nvoid print_msg(char *fmt)  { printf(fmt); /* FLAW */ }\nvoid main() {\n    char buffer[64];\n    read_input(buffer);\n    wrap_log(buffer);\n}",
+      "latte": {
+        "verdict": "SAFE / UNCERTAIN",
+        "confidence": 0.45,
+        "kg_evidence_score": 0.0,
+        "kg_memory_used": false,
+        "triage_score": 0.225,
+        "status": "FALSE NEGATIVE \u274c",
+        "failure_reason": "Context window dilution across multi-function call chain causes ungrounded LLM to lose pointer alias tracking (buffer -> dst -> msg -> alias -> fmt)."
+      },
+      "firmgraph": {
+        "verdict": "VULNERABLE",
+        "confidence": 0.95,
+        "kg_evidence_score": 0.9,
+        "kg_memory_used": true,
+        "triage_score": 0.855,
+        "status": "TRUE POSITIVE \u2705 (CORRECT)",
+        "success_reason": "Neo4j Call Graph performs topological path traversal: (read_input)-[:CALLS]->(wrap_log)-[:CALLS]->(print_msg). Injects exact call chain and parameter indices directly into prompt."
+      }
+    },
+    {
+      "id": "CASE-3",
+      "name": "Recurring Zero-Day Taint Pattern Across Firmware",
+      "flaw_type": "CWE-190 (Integer Overflow into Memory Allocation)",
+      "ground_truth": "VULNERABLE",
+      "code_snippet": "void allocate_records(FILE *f) {\n    int count;\n    fscanf(f, \"%d\", &count);\n    // FLAW: Integer overflow in allocation size\n    size_t sz = count * sizeof(Record);\n    Record *recs = (Record *)malloc(sz);\n}",
+      "latte": {
+        "verdict": "VULNERABLE",
+        "confidence": 0.7,
+        "kg_evidence_score": 0.0,
+        "kg_memory_used": false,
+        "triage_score": 0.35,
+        "status": "WEAK / AMNESIA \u26a0\ufe0f",
+        "failure_reason": "LATTE evaluates in complete isolation with zero historical memory. Cannot determine if this pattern has occurred in other firmware, resulting in low triage prioritization."
+      },
+      "firmgraph": {
+        "verdict": "VULNERABLE",
+        "confidence": 0.95,
+        "kg_evidence_score": 0.95,
+        "kg_memory_used": true,
+        "triage_score": 0.905,
+        "status": "PRIORITIZED RANK 1 \u2705",
+        "success_reason": "Matches VulnPattern 'pattern::CWE-190::t::fscanf' with occurrence_count=159 in Neo4j. Multi-factor triage (0.5\u00d7LLM + 0.3\u00d7KG + 0.2\u00d7CWE) ranks this critical recurring flaw at the top."
+      }
+    }
+  ]
+}
