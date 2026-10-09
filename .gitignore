@@ -62,3 +62,11 @@ data/research_split_80_20/*.jsonl
 models/
 embeddings_cache/
 *.log
+
+# Temporary, Backup & Upload Files
+*.bak
+*.tmp
+.~lock.*#
+data/uploads/
+**/neostore*
+neostore*

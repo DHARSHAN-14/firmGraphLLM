@@ -22,7 +22,7 @@ import time
 from pathlib import Path
 from typing import Optional
 
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException, Request, UploadFile, File, Form
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
@@ -486,35 +486,153 @@ async def get_models_list():
 
 
 
-@app.post("/api/analysis/run")
-async def run_live_analysis(payload: dict):
-    """
-    Execute live vulnerability analysis on demand from the web dashboard.
-    Supports both FirmGraph-LLM (GraphRAG + KG) and LATTE Baseline (B2).
-    """
-    flow_file = payload.get("flow_file", "sample_cwe78_flow.json")
-    model_name = payload.get("model", "qwen2.5:1.5b")
-    mode = payload.get("mode", "firmgraph")  # 'firmgraph' or 'latte'
-    auto_ingest = payload.get("auto_ingest", True)
+@app.get("/api/flows")
+async def get_available_flows():
+    """Return all sample and demo dangerous flows available in the repository."""
+    flows_dir = ROOT / "data" / "flows"
+    flows = []
+    if flows_dir.exists():
+        for fp in sorted(flows_dir.glob("*.json")):
+            try:
+                data = json.loads(fp.read_text(encoding="utf-8"))
+                if isinstance(data, list) and data:
+                    item = data[0]
+                    flows.append({
+                        "file": fp.name,
+                        "flow_id": item.get("flow_id", fp.stem),
+                        "binary": item.get("binary_name", fp.stem),
+                        "source": item.get("source_func", "unknown"),
+                        "sink": item.get("sink_func", "unknown"),
+                        "expected_cwe": item.get("expected_cwe", "CWE-Unknown"),
+                        "functions_count": len(item.get("function_chain", [])),
+                    })
+            except Exception:
+                pass
+    return {"flows": flows}
 
-    fpath = ROOT / "data" / "flows" / flow_file
-    if not fpath.exists():
-        raise HTTPException(status_code=404, detail=f"Flow file '{flow_file}' not found.")
 
+def parse_c_code_to_flow(code: str, filename: str = "custom_code.c"):
+    """Convert raw C source code into a DangerousFlow with FunctionRecords."""
+    import re
+    from llm.reasoning.conversation import DangerousFlow, FunctionRecord
+
+    source_apis = ['recv', 'read', 'fgets', 'getenv', 'fscanf', 'scanf', 'gets', 'connect', 'socket', 'read_buf']
+    sink_apis = {
+        'system': 'CWE-78', 'execl': 'CWE-78', 'execlp': 'CWE-78', 'execv': 'CWE-78', 'execvp': 'CWE-78', 'popen': 'CWE-78',
+        'printf': 'CWE-134', 'sprintf': 'CWE-134', 'snprintf': 'CWE-134', 'fprintf': 'CWE-134',
+        'strcpy': 'CWE-120', 'strcat': 'CWE-120', 'memcpy': 'CWE-120', 'gets': 'CWE-120'
+    }
+
+    found_sources = [s for s in source_apis if re.search(r'\b' + s + r'\b', code)]
+    src_api = found_sources[0] if found_sources else 'read'
+
+    found_sinks = [s for s in sink_apis if re.search(r'\b' + s + r'\b', code)]
+    sink_api = found_sinks[0] if found_sinks else 'system'
+    expected_cwe = sink_apis.get(sink_api, 'CWE-78')
+
+    func_pattern = r'((?:void|int|char\*|static\s+\w+)\s+([a-zA-Z0-9_]+)\s*\([^)]*\)\s*\{[\s\S]*?\n\})'
+    funcs = re.findall(func_pattern, code)
+
+    records = []
+    if funcs:
+        for full_func, func_name in funcs:
+            has_src = any(re.search(r'\b' + s + r'\b', full_func) for s in found_sources)
+            has_snk = any(re.search(r'\b' + s + r'\b', full_func) for s in found_sinks)
+            calls = [s for s in list(set(found_sources + list(sink_apis.keys()))) if re.search(r'\b' + s + r'\b', full_func)]
+            records.append(FunctionRecord(
+                name=func_name,
+                pseudocode=full_func,
+                binary=filename,
+                is_source=has_src,
+                is_sink=has_snk,
+                api_calls=calls
+            ))
+
+    if not records:
+        records = [FunctionRecord(
+            name='main',
+            pseudocode=code,
+            binary=filename,
+            is_source=True,
+            is_sink=True,
+            api_calls=found_sources + found_sinks
+        )]
+
+    return DangerousFlow(
+        flow_id=f"flow_{abs(hash(code)) % 100000}",
+        binary_name=filename,
+        source_func=src_api,
+        source_param=0,
+        sink_func=sink_api,
+        sink_param=0,
+        function_chain=records,
+        expected_cwe=expected_cwe
+    )
+
+
+def parse_binary_to_flow(bin_path: Path, filename: str):
+    """Convert an ELF binary executable into a DangerousFlow with disassembly."""
+    import subprocess
+    from llm.reasoning.conversation import DangerousFlow, FunctionRecord
+
+    sinks = {
+        'system': 'CWE-78', 'execl': 'CWE-78', 'execlp': 'CWE-78', 'execv': 'CWE-78', 'popen': 'CWE-78',
+        'printf': 'CWE-134', 'sprintf': 'CWE-134', 'snprintf': 'CWE-134',
+        'strcpy': 'CWE-120', 'strcat': 'CWE-120', 'memcpy': 'CWE-120', 'gets': 'CWE-120'
+    }
+    sources = ['read', 'recv', 'fgets', 'getenv', 'socket', 'connect', 'read_buf']
+
+    try:
+        res = subprocess.run(['strings', str(bin_path)], capture_output=True, text=True, timeout=5)
+        strings_found = set(res.stdout.splitlines())
+    except Exception:
+        strings_found = set()
+
+    found_snk = [s for s in sinks if s in strings_found]
+    found_src = [s for s in sources if s in strings_found]
+
+    sink_func = found_snk[0] if found_snk else 'system'
+    source_func = found_src[0] if found_src else 'recv'
+    expected_cwe = sinks.get(sink_func, 'CWE-78')
+
+    disasm = ""
+    try:
+        res = subprocess.run(['objdump', '-d', '-M', 'intel', str(bin_path)], capture_output=True, text=True, timeout=8)
+        disasm = res.stdout[:2500]
+    except Exception:
+        disasm = f"ELF binary '{filename}' disassembly unavailable"
+
+    rec = FunctionRecord(
+        name='entry_flow',
+        pseudocode=disasm or f"Disassembly for {filename}",
+        binary=filename,
+        is_source=True,
+        is_sink=True,
+        api_calls=found_src + found_snk
+    )
+
+    return DangerousFlow(
+        flow_id=f"flow_bin_{filename}",
+        binary_name=filename,
+        source_func=source_func,
+        source_param=0,
+        sink_func=sink_func,
+        sink_param=0,
+        function_chain=[rec],
+        expected_cwe=expected_cwe
+    )
+
+
+def execute_flow_analysis(df, model_name: str = "qwen2.5:1.5b", mode: str = "firmgraph", auto_ingest: bool = True):
+    """Execute real multi-turn LLM reasoning and GraphRAG on a DangerousFlow."""
     from llm.client import HybridLLMClient
-    from llm.reasoning.conversation import load_flows_from_json, VulnerabilityAnalyzer
+    from llm.reasoning.conversation import VulnerabilityAnalyzer
     from llm.ranking.scorer import VulnerabilityRanker
     from knowledge_graph.construction.graph_builder import GraphBuilder
     from knowledge_graph.queries.retrieval import KGRetrieval
     from retrieval.retrieval import GraphTraversal, GraphRAGRetriever, VectorSearcher
     from knowledge_graph.schema.nodes import BinaryNode
 
-    flows = load_flows_from_json(fpath)
-    if not flows:
-        raise HTTPException(status_code=400, detail="No valid DangerousFlow in specified file.")
-    df = flows[0]
-
-    # Initialize real client (Hybrid: Cloud API with Ollama local failover)
     client = HybridLLMClient(model=model_name, temperature=0.4)
     analyzer = VulnerabilityAnalyzer(client)
     ranker = VulnerabilityRanker()
@@ -522,7 +640,6 @@ async def run_live_analysis(payload: dict):
     evidence_summary = ""
     evidence_score = 0.0
     evidence_items = []
-    builder = None
 
     t0 = time.time()
 
@@ -550,10 +667,11 @@ async def run_live_analysis(payload: dict):
                     {"type": ev.entity_type, "id": ev.entity_id, "rel": ev.relationship}
                     for ev in ctx.graph_evidence
                 ]
+            except Exception as e:
+                log.warning(f"GraphRAG retrieval warning: {e}")
             finally:
                 driver.close()
 
-    # Run multi-turn reasoning
     result = analyzer.analyze_flow(
         df,
         start_kg_evidence=evidence_summary if mode == "firmgraph" else "",
@@ -563,7 +681,6 @@ async def run_live_analysis(payload: dict):
     ranked_list = ranker.rank([result], kg_scores={df.flow_id: evidence_score})
     ranked = ranked_list[0]
 
-    # Dynamically Ingest if vulnerable and in firmgraph mode
     ingested = False
     if mode == "firmgraph" and auto_ingest and result.vulnerable:
         try:
@@ -597,6 +714,75 @@ async def run_live_analysis(payload: dict):
         "execution_time_sec": round(total_time, 2),
         "ingested_into_graph": ingested,
     }
+
+
+@app.post("/api/analysis/run")
+async def run_live_analysis(payload: dict):
+    """
+    Execute live vulnerability analysis on demand from the web dashboard.
+    Supports flow files or direct C code string.
+    """
+    flow_file = payload.get("flow_file")
+    code = payload.get("code")
+    model_name = payload.get("model", "qwen2.5:1.5b")
+    mode = payload.get("mode", "firmgraph")
+    auto_ingest = payload.get("auto_ingest", True)
+
+    if code and code.strip():
+        df = parse_c_code_to_flow(code.strip(), "user_input.c")
+    elif flow_file:
+        fpath = ROOT / "data" / "flows" / flow_file
+        if not fpath.exists():
+            raise HTTPException(status_code=404, detail=f"Flow file '{flow_file}' not found.")
+        from llm.reasoning.conversation import load_flows_from_json
+        flows = load_flows_from_json(fpath)
+        if not flows:
+            raise HTTPException(status_code=400, detail="No valid DangerousFlow in specified file.")
+        df = flows[0]
+    else:
+        raise HTTPException(status_code=400, detail="Either 'flow_file' or 'code' must be provided.")
+
+    return execute_flow_analysis(df, model_name=model_name, mode=mode, auto_ingest=auto_ingest)
+
+
+@app.post("/api/analysis/upload")
+async def upload_and_analyze(
+    file: Optional[UploadFile] = File(None),
+    code_text: Optional[str] = Form(None),
+    model: str = Form("qwen2.5:1.5b"),
+    mode: str = Form("firmgraph"),
+    auto_ingest: bool = Form(True),
+):
+    """
+    Upload a binary executable (.elf, .bin), C code (.c, .cpp), or flow JSON,
+    and trigger instant automated analysis.
+    """
+    uploads_dir = ROOT / "data" / "uploads"
+    uploads_dir.mkdir(parents=True, exist_ok=True)
+
+    if file and file.filename:
+        filename = file.filename
+        save_path = uploads_dir / filename
+        content = await file.read()
+        save_path.write_bytes(content)
+
+        if filename.endswith(".json"):
+            from llm.reasoning.conversation import load_flows_from_json
+            flows = load_flows_from_json(save_path)
+            if not flows:
+                raise HTTPException(status_code=400, detail="Invalid flow JSON file.")
+            df = flows[0]
+        elif filename.endswith((".c", ".cpp", ".h", ".txt")):
+            code_str = content.decode("utf-8", errors="replace")
+            df = parse_c_code_to_flow(code_str, filename)
+        else:
+            df = parse_binary_to_flow(save_path, filename)
+    elif code_text and code_text.strip():
+        df = parse_c_code_to_flow(code_text.strip(), "pasted_snippet.c")
+    else:
+        raise HTTPException(status_code=400, detail="No file or code provided.")
+
+    return execute_flow_analysis(df, model_name=model, mode=mode, auto_ingest=auto_ingest)
 
 
 # ── Live Cypher Query Console API ────────────────────────────────────────────

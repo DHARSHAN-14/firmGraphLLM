@@ -3,15 +3,13 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>FirmGraph AI — Firmware Vulnerability Scanner & Knowledge Base</title>
-  <!-- Tailwind CSS CDN -->
+  <title>FirmGraph — Static Binary &amp; Code Vulnerability Scanner</title>
+  <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
   <!-- FontAwesome Icons -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <!-- Vis.js Network for Graph Visualization -->
   <script type="text/javascript" src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
-  <!-- Chart.js for Analytics -->
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
   <script>
     tailwind.config = {
@@ -19,1017 +17,972 @@
       theme: {
         extend: {
           colors: {
-            brand: {
-              500: '#0ea5e9',
-              600: '#0284c7',
-            },
-            darkbg: '#0b1120',
-            darkcard: '#151f32',
-            darkborder: '#23324d'
+            appbg: '#090d16',
+            appcard: '#0f172a',
+            appcardhover: '#141e34',
+            appborder: '#1e293b',
+            appborderhover: '#334155',
+            appinput: '#0b1120',
           }
         }
       }
     }
   </script>
+
   <style>
+    body {
+      background-color: #090d16;
+      color: #f1f5f9;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    }
+    .font-mono-code {
+      font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    }
     #network-graph {
       width: 100%;
-      height: 600px;
-      background: radial-gradient(circle at center, #151f32 0%, #0b1120 100%);
+      height: 650px;
+      background-color: #090d16;
     }
     .custom-scrollbar::-webkit-scrollbar {
-      width: 6px;
-      height: 6px;
+      width: 5px;
+      height: 5px;
     }
     .custom-scrollbar::-webkit-scrollbar-track {
-      background: #0b1120;
+      background: #090d16;
     }
     .custom-scrollbar::-webkit-scrollbar-thumb {
-      background: #23324d;
+      background: #1e293b;
       border-radius: 3px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+      background: #334155;
     }
   </style>
 </head>
-<body class="bg-darkbg text-slate-100 font-sans min-h-screen flex flex-col">
+<body class="min-h-screen flex flex-col custom-scrollbar">
 
-  <!-- Header -->
-  <header class="bg-darkcard border-b border-darkborder sticky top-0 z-50 shadow-xl">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5 flex items-center justify-between">
+  <!-- Top Navigation Bar -->
+  <header class="bg-appcard border-b border-appborder sticky top-0 z-40">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between">
+      
+      <!-- Brand & Title -->
       <div class="flex items-center space-x-3">
-        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-sky-500 to-indigo-600 flex items-center justify-center shadow-md shadow-sky-500/25">
-          <i class="fa-solid fa-shield-halved text-white text-lg"></i>
+        <div class="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center text-white font-bold text-sm shadow-sm">
+          <i class="fa-solid fa-shield-halved text-xs"></i>
         </div>
         <div>
-          <h1 class="text-lg font-bold bg-gradient-to-r from-sky-400 via-indigo-300 to-purple-400 bg-clip-text text-transparent">
-            FirmGraph AI
-          </h1>
-          <p class="text-xs text-slate-400">Smart Firmware Security Scanner &amp; Knowledge Base</p>
+          <span class="text-base font-semibold text-white tracking-tight">FirmGraph</span>
+          <span class="text-xs text-slate-400 font-normal ml-2 pl-2 border-l border-slate-700">Static Binary Security Scanner</span>
         </div>
       </div>
 
-      <!-- Live Service Status Badges -->
-      <div class="flex items-center space-x-2.5 text-xs">
-        <div id="neo4j-status-badge" class="px-3 py-1 rounded-full bg-slate-800 border border-slate-700 flex items-center space-x-1.5">
-          <span class="w-2 h-2 rounded-full bg-slate-500 animate-pulse"></span>
-          <span class="text-slate-300 font-medium">Database: Connecting...</span>
-        </div>
-        <div id="ollama-status-badge" class="px-3 py-1 rounded-full bg-emerald-950/70 border border-emerald-800 flex items-center space-x-1.5 text-emerald-400">
-          <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
-          <span id="llm-status-text" class="font-medium">AI Engine: Ready (Local Offline)</span>
-        </div>
-        <button onclick="openApiKeyModal()" class="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 border border-indigo-500/50 transition text-white font-medium flex items-center space-x-1.5 shadow-sm text-xs">
-          <i class="fa-solid fa-key text-amber-300"></i>
-          <span id="api-key-btn-text">Cloud API Key</span>
+      <!-- Center Tabs -->
+      <nav class="flex items-center space-x-1 bg-appinput p-1 rounded-lg border border-appborder">
+        <button id="nav-btn-scanner" onclick="switchTab('scanner')" class="px-4 py-1.5 text-xs font-medium rounded-md bg-blue-600 text-white transition">
+          <i class="fa-solid fa-magnifying-glass mr-1.5 text-[11px]"></i>Scanner
         </button>
-        <button onclick="refreshAll()" class="px-3 py-1.5 rounded-lg bg-sky-600 hover:bg-sky-500 transition text-white font-medium flex items-center space-x-1.5 shadow-sm text-xs">
-          <i class="fa-solid fa-arrows-rotate"></i>
-          <span>Refresh</span>
+        <button id="nav-btn-graph" onclick="switchTab('graph')" class="px-4 py-1.5 text-xs font-medium rounded-md text-slate-400 hover:text-slate-200 transition">
+          <i class="fa-solid fa-circle-nodes mr-1.5 text-[11px]"></i>Knowledge Graph
+        </button>
+      </nav>
+
+      <!-- System Status Indicators & Settings -->
+      <div class="flex items-center space-x-3 text-xs">
+        <div class="flex items-center space-x-1.5 text-slate-400 bg-appinput px-2.5 py-1 rounded border border-appborder">
+          <span id="neo4j-status-dot" class="w-2 h-2 rounded-full bg-emerald-500"></span>
+          <span id="neo4j-status-text" class="text-[11px]">Neo4j: Connected</span>
+        </div>
+        <div class="flex items-center space-x-1.5 text-slate-400 bg-appinput px-2.5 py-1 rounded border border-appborder">
+          <span class="w-2 h-2 rounded-full bg-blue-500"></span>
+          <span id="engine-status-text" class="text-[11px]">Engine: Ready</span>
+        </div>
+        <button onclick="openApiKeyModal()" title="Configure Cloud API Key" class="px-2.5 py-1 rounded bg-appinput hover:bg-slate-800 text-slate-300 border border-appborder transition text-[11px] flex items-center space-x-1">
+          <i class="fa-solid fa-key text-amber-400 text-[10px]"></i>
+          <span>API Key</span>
         </button>
       </div>
-    </div>
 
-    <!-- Navigation Tabs -->
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex space-x-2 border-t border-slate-800/80">
-      <button onclick="switchTab('runner')" id="tab-btn-runner" class="tab-btn py-3 px-4 text-xs font-bold border-b-2 border-sky-400 text-sky-400 flex items-center space-x-2 transition">
-        <i class="fa-solid fa-magnifying-glass text-sky-400"></i>
-        <span>1. Vulnerability Scanner</span>
-      </button>
-      <button onclick="switchTab('graph')" id="tab-btn-graph" class="tab-btn py-3 px-4 text-xs font-semibold border-b-2 border-transparent text-slate-400 hover:text-slate-200 flex items-center space-x-2 transition">
-        <i class="fa-solid fa-circle-nodes text-indigo-400"></i>
-        <span>2. Security Knowledge Map</span>
-      </button>
-      <button onclick="switchTab('progressive')" id="tab-btn-progressive" class="tab-btn py-3 px-4 text-xs font-semibold border-b-2 border-transparent text-slate-400 hover:text-slate-200 flex items-center space-x-2 transition">
-        <i class="fa-solid fa-chart-line text-emerald-400"></i>
-        <span>3. AI Learning &amp; Accuracy</span>
-      </button>
-      <button onclick="openAdvancedModal()" class="py-3 px-4 text-xs font-medium text-slate-500 hover:text-slate-400 ml-auto flex items-center space-x-1 transition">
-        <i class="fa-solid fa-sliders"></i>
-        <span>Advanced Tools</span>
-      </button>
     </div>
   </header>
 
-  <!-- Main Content Container -->
-  <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+  <!-- Main Container -->
+  <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 py-6">
 
-    <!-- KPI Summary Cards Row (Layman Terms) -->
-    <section class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-      <div class="bg-darkcard border border-darkborder rounded-xl p-4 flex items-center justify-between shadow-sm">
-        <div>
-          <p class="text-xs text-slate-400 uppercase tracking-wider font-semibold">Security Knowledge</p>
-          <h3 id="stat-nodes-count" class="text-2xl font-bold text-white mt-1">--</h3>
-          <p class="text-[11px] text-sky-400 mt-0.5">Known bug patterns &amp; APIs</p>
-        </div>
-        <div class="w-11 h-11 rounded-lg bg-sky-500/10 border border-sky-500/20 flex items-center justify-center text-sky-400">
-          <i class="fa-solid fa-database text-lg"></i>
-        </div>
-      </div>
+    <!-- TAB 1: SCANNER & ANALYSIS -->
+    <div id="tab-scanner" class="block">
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
 
-      <div class="bg-darkcard border border-darkborder rounded-xl p-4 flex items-center justify-between shadow-sm">
-        <div>
-          <p class="text-xs text-slate-400 uppercase tracking-wider font-semibold">Connected Rules</p>
-          <h3 id="stat-edges-count" class="text-2xl font-bold text-white mt-1">--</h3>
-          <p class="text-[11px] text-indigo-400 mt-0.5">How bugs &amp; code connect</p>
-        </div>
-        <div class="w-11 h-11 rounded-lg bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400">
-          <i class="fa-solid fa-diagram-project text-lg"></i>
-        </div>
-      </div>
+        <!-- Left Column: Input Selection & Settings (5 Cols) -->
+        <div class="lg:col-span-5 space-y-4">
+          
+          <!-- Input Source Card -->
+          <div class="bg-appcard border border-appborder rounded-xl p-4 shadow-sm">
+            <h2 class="text-xs font-semibold text-slate-200 uppercase tracking-wider mb-3 flex items-center justify-between">
+              <span>Target Input</span>
+              <span class="text-[11px] text-slate-500 lowercase font-normal">choose one source</span>
+            </h2>
 
-      <div class="bg-darkcard border border-darkborder rounded-xl p-4 flex items-center justify-between shadow-sm">
-        <div>
-          <p class="text-xs text-slate-400 uppercase tracking-wider font-semibold">Test Library</p>
-          <h3 id="stat-binaries-count" class="text-2xl font-bold text-white mt-1">6,232</h3>
-          <p class="text-[11px] text-emerald-400 mt-0.5">Verified test programs</p>
-        </div>
-        <div class="w-11 h-11 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400">
-          <i class="fa-solid fa-folder-check text-lg"></i>
-        </div>
-      </div>
-
-      <div class="bg-darkcard border border-darkborder rounded-xl p-4 flex items-center justify-between shadow-sm">
-        <div>
-          <p class="text-xs text-slate-400 uppercase tracking-wider font-semibold">Ready to Scan</p>
-          <h3 id="stat-flows-count" class="text-2xl font-bold text-white mt-1">--</h3>
-          <p class="text-[11px] text-amber-400 mt-0.5">Real-world test scenarios</p>
-        </div>
-        <div class="w-11 h-11 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400">
-          <i class="fa-solid fa-shield-virus text-lg"></i>
-        </div>
-      </div>
-    </section>
-
-    <!-- TAB 1: VULNERABILITY SCANNER (MAIN TOOL) -->
-    <section id="tab-runner" class="tab-content block">
-      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        
-        <!-- Scanner Setup Panel (1 Col) -->
-        <div class="bg-darkcard border border-darkborder rounded-xl p-5 shadow-xl flex flex-col justify-between">
-          <div class="space-y-4">
-            <div class="pb-3 border-b border-darkborder">
-              <h2 class="text-sm font-bold text-white flex items-center">
-                <i class="fa-solid fa-sliders text-sky-400 mr-2"></i>
-                Scan Configuration
-              </h2>
-              <p class="text-[11px] text-slate-400 mt-0.5">Choose a code sample and AI model to inspect for security threats.</p>
-            </div>
-
-            <!-- Flow Selector -->
-            <div>
-              <label class="block text-xs font-semibold text-slate-300 mb-1.5">1. Select Code Sample to Scan:</label>
-              <select id="run-flow-select" class="w-full bg-slate-900 border border-darkborder rounded-lg px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-sky-500">
-                <!-- Dynamically populated with friendly names -->
-              </select>
-            </div>
-
-            <!-- Model Selector -->
-            <div>
-              <label class="block text-xs font-semibold text-slate-300 mb-1.5">2. Choose AI Engine:</label>
-              <select id="run-model-select" class="w-full bg-slate-900 border border-darkborder rounded-lg px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-sky-500">
-                <option value="qwen2.5:1.5b">Fast Local AI (qwen2.5:1.5b — ~18s, Low RAM)</option>
-                <option value="qwen2.5:3b">Deep Reasoning AI (qwen2.5:3b — Higher Precision)</option>
-              </select>
-              <p class="text-[11px] text-slate-400 mt-1">Runs 100% locally and privately on your computer.</p>
-            </div>
-
-            <!-- Scan Mode -->
-            <div>
-              <label class="block text-xs font-semibold text-slate-300 mb-2">3. Scan Mode:</label>
-              <div class="grid grid-cols-2 gap-2">
-                <label class="cursor-pointer border border-sky-600 bg-sky-950/40 p-2.5 rounded-lg flex flex-col items-center text-center">
-                  <input type="radio" name="run-mode" value="firmgraph" checked class="hidden" onchange="updateModeStyle()">
-                  <i class="fa-solid fa-brain text-sky-400 mb-1 text-sm"></i>
-                  <span class="text-xs font-bold text-sky-300">Smart AI</span>
-                  <span class="text-[10px] text-slate-400 mt-0.5">With Security Memory (Recommended)</span>
-                </label>
-                <label class="cursor-pointer border border-darkborder bg-slate-900/60 p-2.5 rounded-lg flex flex-col items-center text-center">
-                  <input type="radio" name="run-mode" value="latte" class="hidden" onchange="updateModeStyle()">
-                  <i class="fa-solid fa-cube text-slate-400 mb-1 text-sm"></i>
-                  <span class="text-xs font-bold text-slate-300">Basic AI</span>
-                  <span class="text-[10px] text-slate-500 mt-0.5">No Memory (Baseline)</span>
-                </label>
-              </div>
-            </div>
-
-            <!-- Memory Save Toggle -->
-            <div class="flex items-center justify-between p-3 bg-slate-900/80 rounded-lg border border-slate-800">
-              <div>
-                <span class="text-xs font-semibold text-slate-200 block">Save Finding to Memory</span>
-                <span class="text-[10px] text-slate-400">Helps AI remember this bug for future scans</span>
-              </div>
-              <input type="checkbox" id="run-auto-ingest" checked class="w-4 h-4 accent-sky-500 rounded cursor-pointer">
-            </div>
-          </div>
-
-          <!-- Run Button -->
-          <div class="pt-4">
-            <button id="btn-execute-analysis" onclick="executeLiveAnalysis()" class="w-full py-3.5 rounded-lg bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 font-bold text-white text-xs uppercase tracking-wider flex items-center justify-center space-x-2 shadow-lg shadow-emerald-950/50 transition">
-              <i class="fa-solid fa-play"></i>
-              <span>Scan Code for Vulnerabilities</span>
-            </button>
-          </div>
-        </div>
-
-        <!-- Live Results Display (2 Cols) -->
-        <div class="lg:col-span-2 bg-darkcard border border-darkborder rounded-xl p-5 shadow-xl flex flex-col min-h-[520px]">
-          <div class="flex items-center justify-between pb-3 border-b border-darkborder mb-4">
-            <h3 class="text-sm font-bold text-white flex items-center">
-              <i class="fa-solid fa-square-poll-vertical text-sky-400 mr-2"></i>
-              Security Scan Findings
-            </h3>
-            <span id="analysis-timer" class="text-xs font-mono px-2.5 py-1 rounded bg-slate-900 border border-slate-800 text-slate-400">Ready</span>
-          </div>
-
-          <!-- Execution Output Container -->
-          <div id="analysis-output-container" class="flex-1 custom-scrollbar overflow-y-auto space-y-4">
-            <div class="text-center py-24 text-slate-500">
-              <div class="w-16 h-16 mx-auto mb-3 rounded-2xl bg-slate-900/60 border border-slate-800 flex items-center justify-center text-slate-600">
-                <i class="fa-solid fa-shield-halved text-2xl"></i>
-              </div>
-              <h4 class="text-sm font-semibold text-slate-400">No Scan Active</h4>
-              <p class="text-xs text-slate-500 mt-1 max-w-sm mx-auto">Select a sample program on the left and click <strong>"Scan Code for Vulnerabilities"</strong> to see AI security analysis in plain English.</p>
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- TAB 2: SECURITY KNOWLEDGE MAP (VISUAL GRAPH) -->
-    <section id="tab-graph" class="tab-content hidden">
-      <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
-        <!-- Interactive Graph Area (3 Cols) -->
-        <div class="lg:col-span-3 bg-darkcard border border-darkborder rounded-xl overflow-hidden shadow-xl flex flex-col">
-          <!-- Graph Toolbar with Live Search -->
-          <div class="p-3 bg-slate-900/90 border-b border-darkborder flex flex-wrap items-center justify-between gap-3">
-            <div class="flex items-center space-x-2">
-              <div class="relative">
-                <input type="text" id="graph-search-input" onkeyup="searchGraphNodes(this.value)" placeholder="Search concept (e.g. system, buffer overflow)..." class="bg-slate-950 border border-darkborder rounded-lg pl-7 pr-3 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-sky-500 w-56">
-                <i class="fa-solid fa-search absolute left-2.5 top-2.5 text-slate-500 text-[10px]"></i>
-              </div>
-              <button onclick="togglePhysics(true)" id="btn-physics-on" class="px-2.5 py-1 text-xs rounded bg-sky-600 text-white font-medium">Float</button>
-              <button onclick="togglePhysics(false)" id="btn-physics-off" class="px-2.5 py-1 text-xs rounded bg-slate-800 text-slate-400 font-medium">Freeze</button>
-              <button onclick="fitGraph()" class="px-2.5 py-1 text-xs rounded bg-slate-800 hover:bg-slate-700 text-slate-300 font-medium">
-                <i class="fa-solid fa-expand mr-1"></i>Reset View
+            <!-- Input Mode Segmented Toggle -->
+            <div class="grid grid-cols-3 gap-1 bg-appinput p-1 rounded-lg border border-appborder mb-3 text-xs">
+              <button type="button" id="mode-btn-upload" onclick="setInputMode('upload')" class="py-1.5 rounded font-medium bg-slate-800 text-white transition text-center">
+                <i class="fa-solid fa-upload mr-1 text-[11px]"></i>Upload
+              </button>
+              <button type="button" id="mode-btn-code" onclick="setInputMode('code')" class="py-1.5 rounded font-medium text-slate-400 hover:text-slate-200 transition text-center">
+                <i class="fa-solid fa-code mr-1 text-[11px]"></i>Paste Code
+              </button>
+              <button type="button" id="mode-btn-sample" onclick="setInputMode('sample')" class="py-1.5 rounded font-medium text-slate-400 hover:text-slate-200 transition text-center">
+                <i class="fa-solid fa-list mr-1 text-[11px]"></i>Sample Flow
               </button>
             </div>
 
-            <!-- Legend Badges (Plain English) -->
-            <div class="flex flex-wrap items-center gap-2 text-[11px]">
-              <span class="inline-flex items-center space-x-1 px-2 py-0.5 rounded bg-red-950/80 border border-red-800 text-red-300 font-medium">
-                <span class="w-2 h-2 rounded-full bg-red-500"></span><span>Security Flaw</span>
-              </span>
-              <span class="inline-flex items-center space-x-1 px-2 py-0.5 rounded bg-amber-950/80 border border-amber-800 text-amber-300 font-medium">
-                <span class="w-2 h-2 rounded-full bg-amber-500"></span><span>Dangerous Function</span>
-              </span>
-              <span class="inline-flex items-center space-x-1 px-2 py-0.5 rounded bg-orange-950/80 border border-orange-800 text-orange-300 font-medium">
-                <span class="w-2 h-2 rounded-full bg-orange-500"></span><span>Attack Pattern</span>
-              </span>
-              <span class="inline-flex items-center space-x-1 px-2 py-0.5 rounded bg-blue-950/80 border border-blue-800 text-blue-300 font-medium">
-                <span class="w-2 h-2 rounded-full bg-blue-500"></span><span>Program</span>
-              </span>
-              <span class="inline-flex items-center space-x-1 px-2 py-0.5 rounded bg-emerald-950/80 border border-emerald-800 text-emerald-300 font-medium">
-                <span class="w-2 h-2 rounded-full bg-emerald-500"></span><span>Code Function</span>
-              </span>
-            </div>
-          </div>
+            <!-- Panel A: File Upload -->
+            <div id="panel-upload" class="block space-y-2">
+              <div id="dropzone" onclick="document.getElementById('file-input').click()" 
+                   ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event)"
+                   class="border border-dashed border-slate-700 hover:border-blue-500 rounded-lg p-6 text-center cursor-pointer transition bg-appinput/50">
+                <i class="fa-solid fa-file-arrow-up text-2xl text-slate-500 mb-2"></i>
+                <p class="text-xs font-medium text-slate-300">Click to upload or drag &amp; drop</p>
+                <p class="text-[11px] text-slate-500 mt-1">Supports stripped ELF (.elf, .bin), C code (.c), or flow JSON</p>
+              </div>
+              <input type="file" id="file-input" class="hidden" accept=".c,.cpp,.h,.elf,.bin,.json" onchange="handleFileSelected(event)">
 
-          <!-- Network Canvas -->
-          <div id="network-graph" class="relative">
-            <div id="graph-loading" class="absolute inset-0 flex items-center justify-center bg-slate-900/80 z-10">
-              <div class="text-center">
-                <i class="fa-solid fa-spinner fa-spin text-3xl text-sky-400 mb-2"></i>
-                <p class="text-xs text-slate-300">Loading Security Knowledge Map...</p>
+              <!-- Selected File Indicator -->
+              <div id="file-selected-card" class="hidden items-center justify-between p-2.5 bg-slate-800/80 rounded-lg border border-slate-700 text-xs">
+                <div class="flex items-center space-x-2 truncate">
+                  <i class="fa-solid fa-file text-blue-400 text-xs"></i>
+                  <span id="file-selected-name" class="font-medium text-slate-200 truncate">binary.elf</span>
+                  <span id="file-selected-size" class="text-slate-500 text-[11px]">(0 KB)</span>
+                </div>
+                <button type="button" onclick="clearSelectedFile()" class="text-slate-400 hover:text-red-400 p-1">
+                  <i class="fa-solid fa-xmark"></i>
+                </button>
               </div>
             </div>
-          </div>
-        </div>
 
-        <!-- Node Inspector Sidebar (1 Col) -->
-        <div class="bg-darkcard border border-darkborder rounded-xl p-4 flex flex-col shadow-xl">
-          <h2 class="text-sm font-bold text-white flex items-center justify-between pb-3 border-b border-darkborder">
-            <span><i class="fa-solid fa-info-circle text-sky-400 mr-1.5"></i>Item Details</span>
-            <span id="selected-node-badge" class="text-[10px] px-2 py-0.5 rounded bg-slate-800 text-slate-400 font-mono">None</span>
-          </h2>
-
-          <div id="node-details" class="flex-1 mt-3 custom-scrollbar overflow-y-auto text-xs text-slate-300">
-            <div class="text-center py-20 text-slate-500">
-              <i class="fa-solid fa-arrow-pointer text-2xl mb-2 opacity-40"></i>
-              <p>Click any item in the map to see what it does and how it was discovered.</p>
+            <!-- Panel B: Code Editor -->
+            <div id="panel-code" class="hidden space-y-2">
+              <div class="flex items-center justify-between text-xs text-slate-400 mb-1">
+                <span>C / C++ Pseudocode Snippet:</span>
+                <button type="button" onclick="loadSampleCodeSnippet()" class="text-blue-400 hover:underline text-[11px]">
+                  Insert Demo Code
+                </button>
+              </div>
+              <textarea id="code-textarea" rows="8" placeholder="Paste C function or decompiled pseudocode with source and sink APIs..."
+                        class="w-full bg-appinput border border-appborder rounded-lg p-3 text-xs font-mono-code text-slate-300 focus:outline-none focus:border-blue-500 custom-scrollbar"></textarea>
             </div>
+
+            <!-- Panel C: Sample Flows Dropdown -->
+            <div id="panel-sample" class="hidden space-y-2">
+              <label class="block text-xs text-slate-400">Choose Benchmark / Demo Flow:</label>
+              <select id="flow-select" class="w-full bg-appinput border border-appborder rounded-lg px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-blue-500">
+                <!-- Dynamically populated from /api/flows -->
+              </select>
+              <p class="text-[11px] text-slate-500">Verified benchmark test cases from NIST Juliet v1.3.</p>
+            </div>
+
           </div>
 
-          <!-- Quick Graph Stats Breakdown -->
-          <div class="mt-4 pt-3 border-t border-darkborder">
-            <h3 class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Knowledge Base Content</h3>
-            <div id="graph-composition-list" class="space-y-1.5 text-xs"></div>
+          <!-- Settings & Execution Card -->
+          <div class="bg-appcard border border-appborder rounded-xl p-4 shadow-sm space-y-4">
+            <h2 class="text-xs font-semibold text-slate-200 uppercase tracking-wider">Engine Settings</h2>
+
+            <!-- Model Dropdown -->
+            <div>
+              <label class="block text-xs font-medium text-slate-300 mb-1.5">Model Engine:</label>
+              <select id="model-select" class="w-full bg-appinput border border-appborder rounded-lg px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-blue-500">
+                <option value="qwen2.5:1.5b">qwen2.5:1.5b (Local — Fast, ~18s)</option>
+                <option value="qwen2.5:3b">qwen2.5:3b (Local — Deep Reasoning)</option>
+              </select>
+            </div>
+
+            <!-- Mode Selector (Radio) -->
+            <div>
+              <label class="block text-xs font-medium text-slate-300 mb-1.5">Analysis Mode:</label>
+              <div class="grid grid-cols-2 gap-2 text-xs">
+                <label class="cursor-pointer border border-blue-600 bg-blue-950/30 p-2.5 rounded-lg flex flex-col text-left transition" id="mode-label-firmgraph">
+                  <div class="flex items-center space-x-1.5">
+                    <input type="radio" name="scan-mode" value="firmgraph" checked class="accent-blue-500" onchange="updateModeUI()">
+                    <span class="font-semibold text-slate-200">FirmGraph-LLM</span>
+                  </div>
+                  <span class="text-[11px] text-slate-400 mt-1">GraphRAG + Knowledge Graph</span>
+                </label>
+
+                <label class="cursor-pointer border border-appborder bg-appinput p-2.5 rounded-lg flex flex-col text-left transition" id="mode-label-latte">
+                  <div class="flex items-center space-x-1.5">
+                    <input type="radio" name="scan-mode" value="latte" class="accent-blue-500" onchange="updateModeUI()">
+                    <span class="font-semibold text-slate-300">LATTE Baseline</span>
+                  </div>
+                  <span class="text-[11px] text-slate-500 mt-1">Ungrounded / Isolated</span>
+                </label>
+              </div>
+            </div>
+
+            <!-- Knowledge Ingestion Toggle -->
+            <div class="flex items-center justify-between py-1 text-xs">
+              <div>
+                <span class="text-slate-300 font-medium block">Save to Knowledge Graph</span>
+                <span class="text-[11px] text-slate-500">Persist verified verdict into Neo4j</span>
+              </div>
+              <input type="checkbox" id="auto-ingest-toggle" checked class="w-4 h-4 accent-blue-600 rounded cursor-pointer">
+            </div>
+
+            <!-- Start Action Button -->
+            <button id="btn-start-scan" onclick="startAnalysis()" class="w-full py-3 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-semibold text-xs tracking-wider uppercase transition shadow-sm flex items-center justify-center space-x-2">
+              <i class="fa-solid fa-play text-xs"></i>
+              <span id="btn-start-text">Start Analysis</span>
+            </button>
+
+          </div>
+
+        </div>
+
+        <!-- Right Column: Output Window (7 Cols) -->
+        <div class="lg:col-span-7">
+          <div class="bg-appcard border border-appborder rounded-xl p-5 shadow-sm flex flex-col min-h-[580px]">
+            
+            <!-- Output Header Bar -->
+            <div class="flex items-center justify-between pb-3 border-b border-appborder mb-4">
+              <div class="flex items-center space-x-2">
+                <i class="fa-solid fa-terminal text-blue-400 text-xs"></i>
+                <h3 class="text-xs font-semibold text-slate-200 uppercase tracking-wider">Analysis Output</h3>
+              </div>
+              <div class="flex items-center space-x-2">
+                <span id="output-timer-badge" class="font-mono-code text-[11px] px-2 py-0.5 rounded bg-appinput text-slate-400 border border-appborder">Idle</span>
+                <button onclick="clearOutput()" title="Clear Window" class="text-slate-500 hover:text-slate-300 text-xs p-1">
+                  <i class="fa-solid fa-trash-can"></i>
+                </button>
+              </div>
+            </div>
+
+            <!-- Output Body -->
+            <div id="output-content-area" class="flex-1 custom-scrollbar overflow-y-auto space-y-4">
+              
+              <!-- Idle Placeholder State -->
+              <div id="output-idle-state" class="text-center py-28 text-slate-500">
+                <div class="w-12 h-12 mx-auto mb-3 rounded-lg bg-appinput border border-appborder flex items-center justify-center text-slate-600">
+                  <i class="fa-solid fa-shield-halved text-xl"></i>
+                </div>
+                <h4 class="text-xs font-medium text-slate-400">Ready to Analyze</h4>
+                <p class="text-[11px] text-slate-500 mt-1 max-w-sm mx-auto">
+                  Select a target input on the left and click <strong>Start Analysis</strong> to inspect taint propagation and vulnerability status.
+                </p>
+              </div>
+
+              <!-- Scanning Progress State -->
+              <div id="output-loading-state" class="hidden text-center py-24 space-y-3">
+                <div class="inline-block w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+                <h4 class="text-xs font-semibold text-slate-300" id="loading-stage-text">Running multi-turn LLM taint analysis...</h4>
+                <p class="text-[11px] text-slate-500 font-mono-code" id="loading-subtext">Retrieving Neo4j graph context &amp; tracking pointer aliases</p>
+              </div>
+
+              <!-- Final Results Container -->
+              <div id="output-result-container" class="hidden space-y-4">
+                
+                <!-- Verdict Header Banner -->
+                <div id="verdict-banner" class="p-3.5 rounded-lg border flex items-center justify-between">
+                  <div class="flex items-center space-x-3">
+                    <span id="verdict-badge" class="px-2.5 py-1 rounded text-xs font-bold tracking-wide uppercase font-mono-code">
+                      VULNERABLE
+                    </span>
+                    <div>
+                      <span id="verdict-cwe" class="text-sm font-semibold text-white block">CWE-78: OS Command Injection</span>
+                      <span id="verdict-target" class="text-[11px] text-slate-400 font-mono-code">Binary: sample.elf</span>
+                    </div>
+                  </div>
+                  <div class="text-right">
+                    <div class="text-xs text-slate-300 font-mono-code">
+                      Triage Score: <span id="verdict-triage" class="font-bold text-white">0.875</span>
+                    </div>
+                    <div class="text-[11px] text-slate-400 font-mono-code">
+                      Confidence: <span id="verdict-confidence">95%</span>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Detail Tabs Navigation -->
+                <div class="flex space-x-2 border-b border-appborder text-xs">
+                  <button onclick="switchResultTab('explanation')" id="res-tab-btn-explanation" class="pb-2 border-b-2 border-blue-500 text-blue-400 font-medium transition">
+                    Explanation
+                  </button>
+                  <button onclick="switchResultTab('trace')" id="res-tab-btn-trace" class="pb-2 border-b-2 border-transparent text-slate-400 hover:text-slate-200 font-medium transition">
+                    Taint Trace
+                  </button>
+                  <button onclick="switchResultTab('kg')" id="res-tab-btn-kg" class="pb-2 border-b-2 border-transparent text-slate-400 hover:text-slate-200 font-medium transition">
+                    Graph Evidence (<span id="res-kg-count">0</span>)
+                  </button>
+                  <button onclick="switchResultTab('patch')" id="res-tab-btn-patch" class="pb-2 border-b-2 border-transparent text-slate-400 hover:text-slate-200 font-medium transition">
+                    Patch Suggestion
+                  </button>
+                </div>
+
+                <!-- Result Tab 1: Explanation -->
+                <div id="res-content-explanation" class="text-xs text-slate-300 leading-relaxed bg-appinput p-3.5 rounded-lg border border-appborder">
+                  <p id="res-explanation-text">No explanation available.</p>
+                </div>
+
+                <!-- Result Tab 2: Taint Trace -->
+                <div id="res-content-trace" class="hidden text-xs bg-appinput p-3.5 rounded-lg border border-appborder font-mono-code text-slate-300 whitespace-pre-wrap">
+                  <div id="res-trace-text">No taint trace recorded.</div>
+                </div>
+
+                <!-- Result Tab 3: Knowledge Graph Evidence -->
+                <div id="res-content-kg" class="hidden text-xs space-y-2">
+                  <div id="res-kg-items" class="space-y-1.5">
+                    <!-- Injected items -->
+                  </div>
+                </div>
+
+                <!-- Result Tab 4: Patch Suggestion -->
+                <div id="res-content-patch" class="hidden text-xs bg-appinput p-3.5 rounded-lg border border-appborder font-mono-code text-slate-300 whitespace-pre-wrap">
+                  <div id="res-patch-text">No remediation suggested.</div>
+                </div>
+
+                <!-- Ingestion Notice -->
+                <div id="res-ingest-notice" class="hidden text-[11px] p-2 bg-emerald-950/40 border border-emerald-800 text-emerald-400 rounded flex items-center space-x-1.5">
+                  <i class="fa-solid fa-check"></i>
+                  <span>Verdict automatically ingested into Neo4j Knowledge Graph.</span>
+                </div>
+
+              </div>
+
+            </div>
+
           </div>
         </div>
-      </div>
-    </section>
 
-    <!-- TAB 3: PROGRESSIVE LEARNING (AI GETS SMARTER OVER TIME) -->
-    <section id="tab-progressive" class="tab-content hidden">
-      <div class="mb-4 bg-darkcard border border-darkborder rounded-xl p-4">
-        <h2 class="text-sm font-bold text-white flex items-center">
-          <i class="fa-solid fa-graduation-cap text-sky-400 mr-2"></i>
-          How the AI Gets Smarter (Security Memory Curve)
-        </h2>
-        <p class="text-xs text-slate-300 mt-1">
-          Unlike ordinary AI scanners that analyze each program in isolation, <strong>FirmGraph AI</strong> remembers past vulnerabilities in its Knowledge Graph. As more programs are scanned, the AI makes faster, more accurate decisions with fewer false alarms.
-        </p>
+      </div>
+    </div>
+
+    <!-- TAB 2: KNOWLEDGE GRAPH VISUALIZER -->
+    <div id="tab-graph" class="hidden space-y-4">
+      
+      <!-- Graph Filter Bar -->
+      <div class="bg-appcard border border-appborder rounded-xl p-3.5 flex flex-wrap items-center justify-between gap-3 text-xs">
+        
+        <!-- Search & Limit -->
+        <div class="flex items-center space-x-2">
+          <div class="relative w-64">
+            <input type="text" id="graph-search-input" onkeyup="filterGraphNodes()" placeholder="Filter nodes (e.g. CWE-78, execl)..."
+                   class="w-full bg-appinput border border-appborder rounded-lg pl-7 pr-3 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-blue-500">
+            <i class="fa-solid fa-magnifying-glass absolute left-2.5 top-2.5 text-slate-500 text-[10px]"></i>
+          </div>
+
+          <select id="graph-limit-select" onchange="loadGraphData()" class="bg-appinput border border-appborder rounded-lg px-2.5 py-1.5 text-xs text-slate-300 focus:outline-none focus:border-blue-500">
+            <option value="50">50 Nodes</option>
+            <option value="100" selected>100 Nodes</option>
+            <option value="200">200 Nodes</option>
+            <option value="400">400 Nodes</option>
+          </select>
+        </div>
+
+        <!-- Node Color Legend -->
+        <div class="flex items-center space-x-3 text-[11px] text-slate-400">
+          <span class="flex items-center space-x-1"><span class="w-2.5 h-2.5 rounded-full bg-purple-500"></span><span>Firmware</span></span>
+          <span class="flex items-center space-x-1"><span class="w-2.5 h-2.5 rounded-full bg-blue-500"></span><span>Binary</span></span>
+          <span class="flex items-center space-x-1"><span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span><span>Function</span></span>
+          <span class="flex items-center space-x-1"><span class="w-2.5 h-2.5 rounded-full bg-amber-500"></span><span>API</span></span>
+          <span class="flex items-center space-x-1"><span class="w-2.5 h-2.5 rounded-full bg-red-500"></span><span>CWE</span></span>
+          <span class="flex items-center space-x-1"><span class="w-2.5 h-2.5 rounded-full bg-orange-500"></span><span>Pattern</span></span>
+        </div>
+
+        <!-- Controls -->
+        <div class="flex items-center space-x-2">
+          <button onclick="resetGraphView()" class="px-2.5 py-1.5 rounded bg-appinput hover:bg-slate-800 text-slate-300 border border-appborder transition">
+            <i class="fa-solid fa-expand mr-1 text-[10px]"></i>Fit
+          </button>
+          <button onclick="loadGraphData()" class="px-2.5 py-1.5 rounded bg-blue-600 hover:bg-blue-500 text-white font-medium transition">
+            <i class="fa-solid fa-arrows-rotate mr-1 text-[10px]"></i>Reload
+          </button>
+        </div>
+
       </div>
 
-      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-        <!-- Knowledge Growth Chart -->
-        <div class="bg-darkcard border border-darkborder rounded-xl p-5 shadow-xl">
-          <h2 class="text-sm font-bold text-white mb-1 flex items-center">
-            <i class="fa-solid fa-chart-area text-sky-400 mr-2"></i>
-            Knowledge Accumulation
-          </h2>
-          <p class="text-xs text-slate-400 mb-3">Total bug patterns &amp; connections remembered over sequential scans</p>
-          <div class="h-64">
-            <canvas id="growthChart"></canvas>
+      <!-- Graph Canvas Container & Inspector Split -->
+      <div class="grid grid-cols-1 lg:grid-cols-4 gap-4">
+        
+        <!-- Canvas (3 Cols) -->
+        <div class="lg:col-span-3 bg-appcard border border-appborder rounded-xl overflow-hidden relative shadow-sm">
+          <div id="network-graph"></div>
+          <div id="graph-loading-overlay" class="absolute inset-0 bg-appbg/80 flex items-center justify-center space-x-2 text-xs text-slate-400 hidden">
+            <div class="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+            <span>Loading graph structure...</span>
           </div>
         </div>
 
-        <!-- Accuracy Grounding Chart -->
-        <div class="bg-darkcard border border-darkborder rounded-xl p-5 shadow-xl">
-          <h2 class="text-sm font-bold text-white mb-1 flex items-center">
-            <i class="fa-solid fa-chart-line text-emerald-400 mr-2"></i>
-            Detection Confidence &amp; Evidence Grounding
-          </h2>
-          <p class="text-xs text-slate-400 mb-3">Overall threat score validated by historical knowledge</p>
-          <div class="h-64">
-            <canvas id="scoreChart"></canvas>
+        <!-- Node Inspector Panel (1 Col) -->
+        <div class="bg-appcard border border-appborder rounded-xl p-4 flex flex-col shadow-sm text-xs">
+          <h3 class="font-semibold text-slate-200 uppercase tracking-wider text-[11px] pb-2 border-b border-appborder mb-3">
+            Node Inspector
+          </h3>
+          <div id="node-inspector-content" class="flex-1 custom-scrollbar overflow-y-auto space-y-3 text-slate-400">
+            <p class="text-[11px] text-slate-500 italic">Click any node in the graph to view its detailed properties and connections.</p>
           </div>
         </div>
+
       </div>
 
-      <!-- Progressive Sequence Table -->
-      <div class="bg-darkcard border border-darkborder rounded-xl p-5 shadow-xl">
-        <h2 class="text-sm font-bold text-white mb-3 flex items-center justify-between">
-          <span><i class="fa-solid fa-clock-rotate-left text-indigo-400 mr-2"></i>Scan History &amp; Grounding Evidence</span>
-          <span class="text-xs text-slate-400 font-normal">Sequential execution log</span>
-        </h2>
-        <div class="overflow-x-auto custom-scrollbar">
-          <table class="w-full text-left text-xs">
-            <thead class="bg-slate-900/80 text-slate-400 uppercase tracking-wider text-[10px] border-b border-darkborder">
-              <tr>
-                <th class="py-2.5 px-3">Scan #</th>
-                <th class="py-2.5 px-3">Program Name</th>
-                <th class="py-2.5 px-3">Detected Flaw</th>
-                <th class="py-2.5 px-3">AI Confidence</th>
-                <th class="py-2.5 px-3">Knowledge Match</th>
-                <th class="py-2.5 px-3">Threat Score</th>
-                <th class="py-2.5 px-3">Memory Size</th>
-              </tr>
-            </thead>
-            <tbody id="progressive-table-body" class="divide-y divide-slate-800 text-slate-300"></tbody>
-          </table>
-        </div>
-      </div>
-    </section>
+    </div>
 
   </main>
 
-  <!-- Footer -->
-  <footer class="bg-darkcard border-t border-darkborder py-4 text-center text-xs text-slate-500">
-    <p>FirmGraph-LLM Security System &bull; Candidate ID: 23ISR012 &bull; College R&amp;D Project</p>
-  </footer>
+  <!-- Cloud API Key Modal -->
+  <div id="modal-apikey" class="fixed inset-0 bg-black/75 z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-appcard border border-appborder rounded-xl max-w-md w-full p-5 space-y-4 shadow-xl">
+      <div class="flex items-center justify-between pb-2 border-b border-appborder">
+        <h3 class="text-sm font-semibold text-white flex items-center space-x-2">
+          <i class="fa-solid fa-key text-amber-400 text-xs"></i>
+          <span>Cloud API Key Configuration</span>
+        </h3>
+        <button onclick="closeApiKeyModal()" class="text-slate-400 hover:text-slate-200">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
 
-  <!-- Frontend Logic -->
+      <p class="text-xs text-slate-400">
+        Optional: Enter an API key for Groq (<code class="text-slate-300">gsk_...</code>), Google Gemini (<code class="text-slate-300">AIza...</code>), or OpenAI (<code class="text-slate-300">sk-...</code>) to accelerate reasoning. If blank, the system automatically uses local offline Ollama.
+      </p>
+
+      <div>
+        <label class="block text-xs font-medium text-slate-300 mb-1">API Key:</label>
+        <input type="password" id="input-api-key" placeholder="gsk_... or sk-..."
+               class="w-full bg-appinput border border-appborder rounded-lg px-3 py-2 text-xs text-slate-200 font-mono-code focus:outline-none focus:border-blue-500">
+      </div>
+
+      <div class="flex justify-end space-x-2 pt-2">
+        <button onclick="closeApiKeyModal()" class="px-3 py-1.5 rounded bg-appinput text-slate-400 hover:text-slate-200 text-xs border border-appborder">
+          Cancel
+        </button>
+        <button onclick="saveApiKey()" class="px-4 py-1.5 rounded bg-blue-600 hover:bg-blue-500 text-white font-medium text-xs">
+          Save Key
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- JavaScript Logic -->
   <script>
-    let networkInstance = null;
-    let growthChartInstance = null;
-    let scoreChartInstance = null;
-    let currentGraphNodes = [];
+    let currentInputMode = 'upload';
+    let selectedFile = null;
+    let visNetwork = null;
+    let allGraphNodes = [];
+    let allGraphEdges = [];
+    let scanStartTime = 0;
+    let scanTimerInterval = null;
 
-    const FRIENDLY_NAMES = {
-      'demo_sanitized_flow_base_error.json': '🔴 [DEMO] Sanitized Input (Base AI Fails → Our AI Wins)',
-      'demo_multihop_pointer_base_error.json': '🔴 [DEMO] Multi-Hop Aliasing (Base AI Misses → Our AI Catches)',
-      'cwe78_system_bad_flow.json': 'Command Injection via Environment Variable (system)',
-      'sample_cwe78_flow.json': 'Command Injection via Network Socket (execl)',
-      'cwe120_buffer_copy_bad_flow.json': 'Buffer Overflow via String Copy (strcpy)',
-      'cwe120_gets_bad_flow.json': 'Buffer Overflow via Unchecked Input (gets)',
-      'cwe120_memcpy_bad_flow.json': 'Buffer Overflow via Memory Copy (memcpy)',
-      'cwe134_format_string_bad_flow.json': 'Format String Flaw via Unvalidated Print (printf)',
-      'demo_sanitized_flow_base_error.json': 'Command Injection with Sanitizer Validation (CWE-78)',
-      'demo_multihop_pointer_base_error.json': 'Format String with Multi-Hop Pointer Aliasing (CWE-134)'
-    };
-
-    const CWE_FRIENDLY = {
-      'CWE-78': 'OS Command Injection',
-      'CWE-120': 'Buffer Overflow (Memory Corruption)',
-      'CWE-134': 'Uncontrolled Format String',
-      'CWE-190': 'Integer Overflow',
-      'CWE-606': 'Unchecked Loop Condition'
-    };
-
-    const CWE_EXPLANATIONS = {
-      'CWE-78': 'An attacker can supply malicious commands that execute directly on the system with full server permissions.',
-      'CWE-120': 'The program copies more data into a memory buffer than it can hold, allowing attackers to crash the software or hijack execution.',
-      'CWE-134': 'User input is passed directly as a format string to printf, enabling attackers to read or alter internal memory.',
-      'CWE-190': 'A calculation exceeds maximum numerical limits, wrapping around and causing security bypasses.',
-      'CWE-606': 'User input directly sets loop counts, potentially causing infinite processing and denial of service.'
-    };
+    document.addEventListener("DOMContentLoaded", () => {
+      loadStats();
+      loadModels();
+      loadFlows();
+      loadGraphData();
+    });
 
     function switchTab(tabId) {
-      document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
-      document.querySelectorAll('.tab-btn').forEach(btn => {
-        btn.classList.remove('border-sky-400', 'text-sky-400');
-        btn.classList.add('border-transparent', 'text-slate-400');
-      });
+      document.getElementById('tab-scanner').classList.toggle('hidden', tabId !== 'scanner');
+      document.getElementById('tab-graph').classList.toggle('hidden', tabId !== 'graph');
 
-      const selected = document.getElementById(`tab-${tabId}`);
-      if (selected) selected.classList.remove('hidden');
+      const btnScanner = document.getElementById('nav-btn-scanner');
+      const btnGraph = document.getElementById('nav-btn-graph');
 
-      const btn = document.getElementById(`tab-btn-${tabId}`);
-      if (btn) {
-        btn.classList.add('border-sky-400', 'text-sky-400');
-        btn.classList.remove('border-transparent', 'text-slate-400');
-      }
-
-      if (tabId === 'graph' && networkInstance) {
-        setTimeout(() => networkInstance.fit(), 200);
-      }
-      if (tabId === 'progressive') {
-        setTimeout(() => renderProgressiveCharts(), 200);
+      if (tabId === 'scanner') {
+        btnScanner.className = "px-4 py-1.5 text-xs font-medium rounded-md bg-blue-600 text-white transition";
+        btnGraph.className = "px-4 py-1.5 text-xs font-medium rounded-md text-slate-400 hover:text-slate-200 transition";
+      } else {
+        btnScanner.className = "px-4 py-1.5 text-xs font-medium rounded-md text-slate-400 hover:text-slate-200 transition";
+        btnGraph.className = "px-4 py-1.5 text-xs font-medium rounded-md bg-blue-600 text-white transition";
+        if (visNetwork) {
+          setTimeout(() => visNetwork.fit(), 150);
+        }
       }
     }
 
-    function updateModeStyle() {
-      const mode = document.querySelector('input[name="run-mode"]:checked').value;
-      const labels = document.querySelectorAll('input[name="run-mode"]');
-      labels.forEach(input => {
-        const parent = input.parentElement;
-        if (input.checked) {
-          parent.className = 'cursor-pointer border border-sky-600 bg-sky-950/40 p-2.5 rounded-lg flex flex-col items-center text-center';
+    function setInputMode(mode) {
+      currentInputMode = mode;
+      const modes = ['upload', 'code', 'sample'];
+      modes.forEach(m => {
+        const btn = document.getElementById(`mode-btn-${m}`);
+        const panel = document.getElementById(`panel-${m}`);
+        if (m === mode) {
+          btn.className = "py-1.5 rounded font-medium bg-slate-800 text-white transition text-center";
+          panel.classList.remove('hidden');
         } else {
-          parent.className = 'cursor-pointer border border-darkborder bg-slate-900/60 p-2.5 rounded-lg flex flex-col items-center text-center';
+          btn.className = "py-1.5 rounded font-medium text-slate-400 hover:text-slate-200 transition text-center";
+          panel.classList.add('hidden');
         }
       });
+    }
+
+    function handleDragOver(e) {
+      e.preventDefault();
+      document.getElementById('dropzone').classList.add('border-blue-500', 'bg-blue-950/20');
+    }
+
+    function handleDragLeave(e) {
+      e.preventDefault();
+      document.getElementById('dropzone').classList.remove('border-blue-500', 'bg-blue-950/20');
+    }
+
+    function handleDrop(e) {
+      e.preventDefault();
+      document.getElementById('dropzone').classList.remove('border-blue-500', 'bg-blue-950/20');
+      if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+        setFile(e.dataTransfer.files[0]);
+      }
+    }
+
+    function handleFileSelected(e) {
+      if (e.target.files && e.target.files.length > 0) {
+        setFile(e.target.files[0]);
+      }
+    }
+
+    function setFile(file) {
+      selectedFile = file;
+      document.getElementById('file-selected-name').textContent = file.name;
+      const sizeKb = (file.size / 1024).toFixed(1);
+      document.getElementById('file-selected-size').textContent = `(${sizeKb} KB)`;
+      document.getElementById('file-selected-card').classList.remove('hidden');
+      document.getElementById('file-selected-card').classList.add('flex');
+    }
+
+    function clearSelectedFile() {
+      selectedFile = null;
+      document.getElementById('file-input').value = "";
+      document.getElementById('file-selected-card').classList.add('hidden');
+      document.getElementById('file-selected-card').classList.remove('flex');
+    }
+
+    function loadSampleCodeSnippet() {
+      const sample = `/* Sample C Flow: Network Socket to Command Injection */
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <sys/socket.h>
+
+void execute_user_request(char *arg) {
+    char command[512];
+    snprintf(command, sizeof(command), "sh -c '%s'", arg);
+    execl("/bin/sh", "sh", "-c", command, NULL);
+}
+
+int main() {
+    int sock = socket(AF_INET, SOCK_STREAM, 0);
+    char buffer[256];
+    recv(sock, buffer, sizeof(buffer) - 1, 0);
+    execute_user_request(buffer);
+    return 0;
+}`;
+      document.getElementById('code-textarea').value = sample;
+    }
+
+    function updateModeUI() {
+      const mode = document.querySelector('input[name="scan-mode"]:checked').value;
+      const fgLabel = document.getElementById('mode-label-firmgraph');
+      const latteLabel = document.getElementById('mode-label-latte');
+
+      if (mode === 'firmgraph') {
+        fgLabel.className = "cursor-pointer border border-blue-600 bg-blue-950/30 p-2.5 rounded-lg flex flex-col text-left transition";
+        latteLabel.className = "cursor-pointer border border-appborder bg-appinput p-2.5 rounded-lg flex flex-col text-left transition";
+      } else {
+        fgLabel.className = "cursor-pointer border border-appborder bg-appinput p-2.5 rounded-lg flex flex-col text-left transition";
+        latteLabel.className = "cursor-pointer border border-blue-600 bg-blue-950/30 p-2.5 rounded-lg flex flex-col text-left transition";
+      }
+    }
+
+    async function loadFlows() {
+      try {
+        const res = await fetch('/api/flows');
+        const data = await res.json();
+        const select = document.getElementById('flow-select');
+        select.innerHTML = '';
+
+        (data.flows || []).forEach(f => {
+          const opt = document.createElement('option');
+          opt.value = f.file;
+          let label = `${f.expected_cwe}: ${f.source} → ${f.sink} (${f.file})`;
+          if (f.file.includes('demo_sanitized')) {
+            label = `[DEMO] Sanitized Safe Flow (${f.expected_cwe}) — LATTE False Positive Trap`;
+            opt.style.color = '#ef4444';
+          } else if (f.file.includes('demo_multihop')) {
+            label = `[DEMO] Multi-Hop Pointer Aliasing (${f.expected_cwe}) — LATTE Context Dilution`;
+          } else if (f.file.includes('sample_cwe78')) {
+            label = `CWE-78: Real Flaw (recv → execl) — Standard Command Injection`;
+          }
+          opt.textContent = label;
+          select.appendChild(opt);
+        });
+      } catch (e) {
+        console.error("Failed to load flows:", e);
+      }
+    }
+
+    async function loadModels() {
+      try {
+        const res = await fetch('/api/models');
+        const data = await res.json();
+        const select = document.getElementById('model-select');
+        select.innerHTML = '';
+
+        if (data.cloud) {
+          const opt = document.createElement('option');
+          opt.value = data.cloud.model;
+          opt.textContent = `Cloud: ${data.cloud.model} (${data.cloud.provider.toUpperCase()})`;
+          select.appendChild(opt);
+        }
+
+        (data.models || ['qwen2.5:1.5b']).forEach(m => {
+          const opt = document.createElement('option');
+          opt.value = m;
+          opt.textContent = `Local: ${m}`;
+          if (m === (data.default || 'qwen2.5:1.5b') && !data.cloud) {
+            opt.selected = true;
+          }
+          select.appendChild(opt);
+        });
+      } catch (e) {
+        console.error("Failed to load models:", e);
+      }
     }
 
     async function loadStats() {
       try {
         const res = await fetch('/api/stats');
         const data = await res.json();
-
-        document.getElementById('stat-nodes-count').innerText = data.neo4j.total_nodes;
-        document.getElementById('stat-edges-count').innerText = data.neo4j.total_edges;
-        document.getElementById('stat-flows-count').innerText = data.flows.total_sample_flows;
-
-        const badge = document.getElementById('neo4j-status-badge');
-        if (data.neo4j.status === 'online') {
-          badge.className = 'px-3 py-1 rounded-full bg-emerald-950/70 border border-emerald-800 flex items-center space-x-1.5 text-emerald-400';
-          badge.innerHTML = `<span class="w-2 h-2 rounded-full bg-emerald-500"></span><span class="font-medium">Database: Connected (${data.neo4j.total_nodes} items)</span>`;
+        if (data.neo4j && data.neo4j.status === 'online') {
+          document.getElementById('neo4j-status-dot').className = "w-2 h-2 rounded-full bg-emerald-500";
+          document.getElementById('neo4j-status-text').textContent = `Neo4j: ${data.neo4j.total_nodes.toLocaleString()} nodes`;
         } else {
-          badge.className = 'px-3 py-1 rounded-full bg-rose-950/70 border border-rose-800 flex items-center space-x-1.5 text-rose-400';
-          badge.innerHTML = `<span class="w-2 h-2 rounded-full bg-rose-500"></span><span class="font-medium">Database: Offline</span>`;
-        }
-
-        const compList = document.getElementById('graph-composition-list');
-        compList.innerHTML = '';
-        const labelMap = {
-          'API': 'Dangerous Functions',
-          'VulnPattern': 'Attack Patterns',
-          'CWE': 'Security Flaw Types',
-          'Binary': 'Programs',
-          'Function': 'Code Functions'
-        };
-        for (const [lbl, count] of Object.entries(data.neo4j.nodes_by_label || {})) {
-          compList.innerHTML += `
-            <div class="flex items-center justify-between text-slate-300">
-              <span class="text-slate-400">${labelMap[lbl] || lbl}</span>
-              <span class="font-semibold text-white font-mono">${count}</span>
-            </div>
-          `;
+          document.getElementById('neo4j-status-dot').className = "w-2 h-2 rounded-full bg-red-500";
+          document.getElementById('neo4j-status-text').textContent = `Neo4j: Offline`;
         }
       } catch (e) {
-        console.error('Error loading stats:', e);
+        console.error("Failed to load stats:", e);
       }
     }
 
-    async function loadFlowsList() {
-      try {
-        const res = await fetch('/api/ingestion/summary');
-        const data = await res.json();
+    async function startAnalysis() {
+      const btn = document.getElementById('btn-start-scan');
+      const btnText = document.getElementById('btn-start-text');
+      const model = document.getElementById('model-select').value;
+      const mode = document.querySelector('input[name="scan-mode"]:checked').value;
+      const autoIngest = document.getElementById('auto-ingest-toggle').checked;
 
-        const sel = document.getElementById('run-flow-select');
-        sel.innerHTML = '';
-        (data.dangerous_flows || []).forEach(f => {
-          const friendly = FRIENDLY_NAMES[f.file] || `${f.expected_cwe}: ${f.source} → ${f.sink}`;
-          const isDemo = f.file.startsWith('demo_');
-          const style = isDemo ? 'style="color: #ef4444;"' : '';
-          sel.innerHTML += `<option value="${f.file}" ${style}>${friendly}</option>`;
-        });
-      } catch (e) {
-        console.error('Error loading flows:', e);
+      if (currentInputMode === 'upload' && !selectedFile) {
+        alert("Please select or drop a file to analyze first.");
+        return;
       }
-    }
-
-    async function executeLiveAnalysis() {
-      const flowFile = document.getElementById('run-flow-select').value;
-      const model = document.getElementById('run-model-select').value;
-      const mode = document.querySelector('input[name="run-mode"]:checked').value;
-      const autoIngest = document.getElementById('run-auto-ingest').checked;
-
-      const btn = document.getElementById('btn-execute-analysis');
-      const container = document.getElementById('analysis-output-container');
-      const timer = document.getElementById('analysis-timer');
+      if (currentInputMode === 'code' && !document.getElementById('code-textarea').value.trim()) {
+        alert("Please paste C code or pseudocode to analyze.");
+        return;
+      }
 
       btn.disabled = true;
-      btn.className = 'w-full py-3.5 rounded-lg bg-slate-700 font-bold text-slate-400 text-xs uppercase tracking-wider flex items-center justify-center space-x-2 cursor-not-allowed';
-      btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin mr-2"></i>Scanning with ${model}...`;
+      btn.classList.add('opacity-70', 'cursor-not-allowed');
+      btnText.textContent = "Analyzing...";
 
-      const friendlyName = FRIENDLY_NAMES[flowFile] || flowFile;
+      document.getElementById('output-idle-state').classList.add('hidden');
+      document.getElementById('output-result-container').classList.add('hidden');
+      document.getElementById('output-loading-state').classList.remove('hidden');
 
-      container.innerHTML = `
-        <div class="p-5 rounded-xl bg-slate-900/90 border border-darkborder space-y-3">
-          <div class="flex items-center space-x-2 text-sky-400 text-xs font-semibold">
-            <i class="fa-solid fa-circle-notch fa-spin"></i>
-            <span>Inspection in Progress: Checking code against security memory...</span>
-          </div>
-          <div class="text-xs text-slate-300 space-y-1">
-            <p><strong class="text-slate-400">Target:</strong> ${friendlyName}</p>
-            <p><strong class="text-slate-400">Engine:</strong> ${model}</p>
-            <p><strong class="text-slate-400">Mode:</strong> ${mode === 'firmgraph' ? 'Smart AI (with Knowledge Memory)' : 'Basic AI (Isolated)'}</p>
-          </div>
-        </div>
-      `;
-
-      let sec = 0;
-      timer.innerText = `Scanning: 0s`;
-      const interval = setInterval(() => {
-        sec++;
-        timer.innerText = `Scanning: ${sec}s`;
-      }, 1000);
+      scanStartTime = Date.now();
+      document.getElementById('output-timer-badge').textContent = "Running (0.0s)";
+      clearInterval(scanTimerInterval);
+      scanTimerInterval = setInterval(() => {
+        const elapsed = ((Date.now() - scanStartTime) / 1000).toFixed(1);
+        document.getElementById('output-timer-badge').textContent = `Running (${elapsed}s)`;
+      }, 200);
 
       try {
-        const res = await fetch('/api/analysis/run', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ flow_file: flowFile, model: model, mode: mode, auto_ingest: autoIngest })
-        });
-        const data = await res.json();
-        clearInterval(interval);
-        timer.innerText = `Completed in ${data.execution_time_sec}s`;
+        let result = null;
 
-        btn.disabled = false;
-        btn.className = 'w-full py-3.5 rounded-lg bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 font-bold text-white text-xs uppercase tracking-wider flex items-center justify-center space-x-2 shadow-lg transition';
-        btn.innerHTML = `<i class="fa-solid fa-play mr-2"></i>Scan Code for Vulnerabilities`;
+        if (currentInputMode === 'upload' && selectedFile) {
+          const formData = new FormData();
+          formData.append('file', selectedFile);
+          formData.append('model', model);
+          formData.append('mode', mode);
+          formData.append('auto_ingest', autoIngest);
 
-        if (res.ok) {
-          const isVuln = data.vulnerable;
-          const vulnBadge = isVuln 
-            ? '<span class="px-3 py-1 rounded-full bg-red-950 text-red-300 border border-red-800 font-bold flex items-center space-x-1.5"><span class="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span><span>DANGEROUS VULNERABILITY FOUND</span></span>' 
-            : '<span class="px-3 py-1 rounded-full bg-emerald-950 text-emerald-300 border border-emerald-800 font-bold flex items-center space-x-1.5"><span class="w-2 h-2 rounded-full bg-emerald-500"></span><span>CODE IS SAFE / NO THREAT FOUND</span></span>';
+          const res = await fetch('/api/analysis/upload', {
+            method: 'POST',
+            body: formData,
+          });
+          if (!res.ok) throw new Error(await res.text());
+          result = await res.json();
 
-          const friendlyFlaw = CWE_FRIENDLY[data.cwe] || data.cwe;
-          const flawDescription = CWE_EXPLANATIONS[data.cwe] || 'Security vulnerability detected in this execution path.';
+        } else if (currentInputMode === 'code') {
+          const code = document.getElementById('code-textarea').value;
+          const res = await fetch('/api/analysis/run', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+              code: code,
+              model: model,
+              mode: mode,
+              auto_ingest: autoIngest,
+            }),
+          });
+          if (!res.ok) throw new Error(await res.text());
+          result = await res.json();
 
-          let evHtml = '';
-          if (data.kg_evidence_items && data.kg_evidence_items.length > 0) {
-            evHtml = '<div class="mt-2 flex flex-wrap gap-1.5">';
-            data.kg_evidence_items.forEach(ev => {
-              evHtml += `<span class="inline-block px-2.5 py-1 rounded bg-sky-950/80 border border-sky-800 text-[11px] text-sky-300 font-medium"><i class="fa-solid fa-link text-[10px] mr-1 text-sky-400"></i>${ev.id} (${ev.type})</span>`;
-            });
-            evHtml += '</div>';
-          } else {
-            evHtml = '<p class="text-xs text-slate-500 italic mt-1">No prior memory retrieved (Standard AI mode)</p>';
-          }
-
-          // Build clean attack path breadcrumb
-          const attackPath = data.taint_trace 
-            ? `<div class="bg-slate-950 p-3 rounded-lg border border-slate-800">
-                <span class="text-xs font-semibold text-amber-300 flex items-center mb-1">
-                  <i class="fa-solid fa-route mr-1.5"></i>How the Attack Flows (Danger Path):
-                </span>
-                <p class="text-xs text-slate-200 font-mono bg-slate-900/80 p-2 rounded border border-slate-800 whitespace-pre-wrap">${data.taint_trace}</p>
-               </div>`
-            : '';
-
-          container.innerHTML = `
-            <div class="bg-slate-900/90 rounded-xl p-5 border border-darkborder space-y-4">
-              <!-- Header Verdict -->
-              <div class="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-darkborder">
-                <div>
-                  <h4 class="font-bold text-white text-base">${friendlyFlaw}</h4>
-                  <p class="text-xs text-slate-400 mt-0.5">${flawDescription}</p>
-                </div>
-                <div>${vulnBadge}</div>
-              </div>
-
-              <!-- Key Metrics in Layman Terms -->
-              <div class="grid grid-cols-3 gap-3">
-                <div class="bg-slate-950 p-3 rounded-lg border border-slate-800">
-                  <span class="text-[10px] uppercase text-slate-400 font-semibold block">AI Confidence</span>
-                  <p class="text-lg font-bold text-sky-400 mt-0.5">${(data.confidence * 100).toFixed(0)}%</p>
-                  <span class="text-[10px] text-slate-500">Certainty level</span>
-                </div>
-                <div class="bg-slate-950 p-3 rounded-lg border border-slate-800">
-                  <span class="text-[10px] uppercase text-slate-400 font-semibold block">Knowledge Match</span>
-                  <p class="text-lg font-bold text-indigo-400 mt-0.5">${data.kg_evidence_score > 0 ? 'High' : 'None'}</p>
-                  <span class="text-[10px] text-slate-500">${data.kg_evidence_score.toFixed(2)} score</span>
-                </div>
-                <div class="bg-slate-950 p-3 rounded-lg border border-slate-800">
-                  <span class="text-[10px] uppercase text-slate-400 font-semibold block">Overall Threat Risk</span>
-                  <p class="text-lg font-bold ${isVuln ? 'text-red-400' : 'text-emerald-400'} mt-0.5">${(Math.max(0, data.final_triage_score) * 100).toFixed(0)}%</p>
-                  <span class="text-[10px] text-slate-500">${isVuln ? 'High Priority' : 'Safe'}</span>
-                </div>
-              </div>
-
-              <!-- Plain English Explanation -->
-              <div class="bg-slate-950 p-3.5 rounded-lg border border-slate-800">
-                <span class="text-xs font-semibold text-slate-200 flex items-center mb-1">
-                  <i class="fa-solid fa-circle-question text-sky-400 mr-1.5"></i>What Happened (Plain Explanation):
-                </span>
-                <p class="text-xs text-slate-300 leading-relaxed">${data.explanation}</p>
-              </div>
-
-              <!-- Attack Path -->
-              ${attackPath}
-
-              <!-- How to Fix -->
-              <div class="bg-slate-950 p-3.5 rounded-lg border border-emerald-950/60 bg-emerald-950/10">
-                <span class="text-xs font-semibold text-emerald-300 flex items-center mb-1">
-                  <i class="fa-solid fa-wrench mr-1.5"></i>Recommended Fix (How to Patch):
-                </span>
-                <p class="text-xs text-slate-300 leading-relaxed">${data.patch_suggestion || 'Sanitize user inputs and enforce strict boundary checks before passing variables to sensitive system operations.'}</p>
-              </div>
-
-              <!-- Security Knowledge Match Evidence -->
-              <div class="bg-slate-950 p-3 rounded-lg border border-slate-800">
-                <span class="text-xs font-semibold text-slate-300 flex items-center">
-                  <i class="fa-solid fa-database text-sky-400 mr-1.5"></i>Connected Historical Security Knowledge:
-                </span>
-                ${evHtml}
-              </div>
-
-              ${data.ingested_into_graph ? '<div class="p-2.5 bg-emerald-950/60 border border-emerald-800 rounded-lg text-xs text-emerald-300 font-medium flex items-center space-x-2"><i class="fa-solid fa-check-circle text-emerald-400"></i><span>Successfully saved this finding into Security Knowledge Memory for future scans!</span></div>' : ''}
-            </div>
-          `;
-
-          loadStats();
-          loadGraph();
         } else {
-          container.innerHTML = `<div class="p-4 rounded-xl bg-rose-950/80 border border-rose-800 text-rose-300 text-xs">Error: ${data.detail || 'Analysis failed'}</div>`;
+          const flowFile = document.getElementById('flow-select').value;
+          const res = await fetch('/api/analysis/run', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+              flow_file: flowFile,
+              model: model,
+              mode: mode,
+              auto_ingest: autoIngest,
+            }),
+          });
+          if (!res.ok) throw new Error(await res.text());
+          result = await res.json();
         }
-      } catch (e) {
-        clearInterval(interval);
+
+        renderAnalysisOutput(result);
+
+      } catch (err) {
+        console.error("Analysis execution error:", err);
+        alert(`Analysis failed: ${err.message || err}`);
+        document.getElementById('output-loading-state').classList.add('hidden');
+        document.getElementById('output-idle-state').classList.remove('hidden');
+      } finally {
+        clearInterval(scanTimerInterval);
         btn.disabled = false;
-        container.innerHTML = `<div class="p-4 rounded-xl bg-rose-950/80 border border-rose-800 text-rose-300 text-xs">Network error during scan execution.</div>`;
+        btn.classList.remove('opacity-70', 'cursor-not-allowed');
+        btnText.textContent = "Start Analysis";
       }
     }
 
-    // Graph Visualization
-    async function loadGraph() {
+    function renderAnalysisOutput(res) {
+      document.getElementById('output-loading-state').classList.add('hidden');
+      document.getElementById('output-result-container').classList.remove('hidden');
+
+      const elapsed = res.execution_time_sec ? `${res.execution_time_sec}s` : `${((Date.now() - scanStartTime) / 1000).toFixed(1)}s`;
+      document.getElementById('output-timer-badge').textContent = `Done in ${elapsed}`;
+
+      const banner = document.getElementById('verdict-banner');
+      const badge = document.getElementById('verdict-badge');
+      const cwe = document.getElementById('verdict-cwe');
+      const target = document.getElementById('verdict-target');
+      const triage = document.getElementById('verdict-triage');
+      const confidence = document.getElementById('verdict-confidence');
+
+      if (res.vulnerable) {
+        banner.className = "p-3.5 rounded-lg border border-red-900/60 bg-red-950/30 flex items-center justify-between";
+        badge.className = "px-2.5 py-1 rounded text-xs font-bold tracking-wide uppercase font-mono-code bg-red-900/60 text-red-300 border border-red-800";
+        badge.textContent = "VULNERABLE";
+        cwe.textContent = res.cwe || res.expected_cwe || "Confirmed Vulnerability";
+      } else {
+        banner.className = "p-3.5 rounded-lg border border-emerald-900/60 bg-emerald-950/30 flex items-center justify-between";
+        badge.className = "px-2.5 py-1 rounded text-xs font-bold tracking-wide uppercase font-mono-code bg-emerald-900/60 text-emerald-300 border border-emerald-800";
+        badge.textContent = "SAFE / BENIGN";
+        cwe.textContent = "Sanitization Verified (No Exploitation)";
+      }
+
+      target.textContent = `Target: ${res.binary_name || res.flow_id} (${res.mode.toUpperCase()})`;
+      triage.textContent = res.final_triage_score !== undefined ? res.final_triage_score : "--";
+      confidence.textContent = res.confidence ? `${Math.round(res.confidence * 100)}%` : "--";
+
+      document.getElementById('res-explanation-text').textContent = res.explanation || "No explanation provided.";
+
+      const traceContainer = document.getElementById('res-trace-text');
+      if (Array.isArray(res.taint_trace) && res.taint_trace.length > 0) {
+        traceContainer.textContent = res.taint_trace.join("\n↓\n");
+      } else {
+        traceContainer.textContent = res.taint_trace || "Direct flow from source to sink verified.";
+      }
+
+      const kgContainer = document.getElementById('res-kg-items');
+      const kgCount = document.getElementById('res-kg-count');
+      kgContainer.innerHTML = '';
+      const items = res.kg_evidence_items || [];
+      kgCount.textContent = items.length;
+
+      if (items.length > 0) {
+        items.forEach(it => {
+          const row = document.createElement('div');
+          row.className = "p-2 rounded bg-appinput border border-appborder flex items-center justify-between";
+          row.innerHTML = `
+            <div class="flex items-center space-x-2">
+              <span class="px-1.5 py-0.5 rounded text-[10px] bg-slate-800 text-blue-300 font-mono-code">${it.type || 'Entity'}</span>
+              <span class="font-medium text-slate-200">${it.id}</span>
+            </div>
+            <span class="text-slate-500 text-[11px] font-mono-code">${it.rel || 'CONNECTED'}</span>
+          `;
+          kgContainer.appendChild(row);
+        });
+      } else {
+        kgContainer.innerHTML = `<div class="p-3 text-slate-500 italic bg-appinput rounded border border-appborder">No direct graph edges retrieved.</div>`;
+      }
+
+      document.getElementById('res-patch-text').textContent = res.patch_suggestion || "No remediation suggestion generated.";
+
+      const notice = document.getElementById('res-ingest-notice');
+      notice.classList.toggle('hidden', !res.ingested_into_graph);
+
+      switchResultTab('explanation');
+    }
+
+    function switchResultTab(tabKey) {
+      const tabs = ['explanation', 'trace', 'kg', 'patch'];
+      tabs.forEach(t => {
+        const btn = document.getElementById(`res-tab-btn-${t}`);
+        const content = document.getElementById(`res-content-${t}`);
+        if (t === tabKey) {
+          btn.className = "pb-2 border-b-2 border-blue-500 text-blue-400 font-medium transition";
+          content.classList.remove('hidden');
+        } else {
+          btn.className = "pb-2 border-b-2 border-transparent text-slate-400 hover:text-slate-200 font-medium transition";
+          content.classList.add('hidden');
+        }
+      });
+    }
+
+    function clearOutput() {
+      document.getElementById('output-result-container').classList.add('hidden');
+      document.getElementById('output-loading-state').classList.add('hidden');
+      document.getElementById('output-idle-state').classList.remove('hidden');
+      document.getElementById('output-timer-badge').textContent = "Idle";
+    }
+
+    async function loadGraphData() {
+      const overlay = document.getElementById('graph-loading-overlay');
+      overlay.classList.remove('hidden');
+      const limit = document.getElementById('graph-limit-select').value;
+
       try {
-        const res = await fetch('/api/graph?limit=100');
+        const res = await fetch(`/api/graph?limit=${limit}`);
         const data = await res.json();
 
+        allGraphNodes = data.nodes || [];
+        allGraphEdges = data.edges || [];
+
         const container = document.getElementById('network-graph');
-        document.getElementById('graph-loading').classList.add('hidden');
+        const graphData = {
+          nodes: new vis.DataSet(allGraphNodes),
+          edges: new vis.DataSet(allGraphEdges)
+        };
 
-        currentGraphNodes = data.nodes;
-
-        const nodes = new vis.DataSet(data.nodes);
-        const edges = new vis.DataSet(data.edges);
-
-        const graphData = { nodes: nodes, edges: edges };
         const options = {
           nodes: {
             shape: 'dot',
-            size: 16,
-            font: { size: 11, color: '#f8fafc', face: 'system-ui' },
-            borderWidth: 2,
-            shadow: true
+            size: 14,
+            font: { color: '#f1f5f9', size: 11, face: 'monospace' },
+            borderWidth: 1.5,
+            borderColor: '#334155',
           },
           edges: {
-            width: 1.5,
-            arrows: { to: { enabled: true, scaleFactor: 0.7 } },
-            smooth: { type: 'continuous' }
+            arrows: { to: { enabled: true, scaleFactor: 0.5 } },
+            color: { color: '#334155', highlight: '#38bdf8' },
+            smooth: { type: 'continuous' },
+            font: { color: '#64748b', size: 9, face: 'monospace' },
           },
           physics: {
-            stabilization: false,
-            barnesHut: {
-              gravitationalConstant: -2500,
-              springConstant: 0.04,
-              springLength: 95
-            }
+            stabilization: { iterations: 120 },
+            barnesHut: { gravitationalConstant: -3000, springLength: 95 }
           },
-          interaction: { hover: true, tooltipDelay: 150 }
+          interaction: { hover: true, tooltipDelay: 100 }
         };
 
-        networkInstance = new vis.Network(container, graphData, options);
+        visNetwork = new vis.Network(container, graphData, options);
 
-        networkInstance.on('click', function(params) {
+        visNetwork.on("click", (params) => {
           if (params.nodes.length > 0) {
             const nodeId = params.nodes[0];
-            const node = data.nodes.find(n => n.id === nodeId);
-            if (node) showNodeDetails(node);
+            const node = allGraphNodes.find(n => n.id === nodeId);
+            if (node) showNodeProperties(node);
           }
         });
+
       } catch (e) {
-        console.error('Error loading graph:', e);
+        console.error("Failed to load graph:", e);
+      } finally {
+        overlay.classList.add('hidden');
       }
     }
 
-    function showNodeDetails(node) {
-      document.getElementById('selected-node-badge').innerText = node.group;
-
-      let propsHtml = '<div class="space-y-1.5 mt-2">';
-      for (const [k, v] of Object.entries(node.properties || {})) {
-        if (k !== 'id' && v) {
-          propsHtml += `<div class="p-1.5 bg-slate-900 rounded border border-slate-800"><span class="text-slate-400 font-semibold">${k}:</span> <span class="text-slate-200">${v}</span></div>`;
-        }
-      }
-      propsHtml += '</div>';
-
-      document.getElementById('node-details').innerHTML = `
-        <div class="p-3 bg-slate-900/80 rounded-lg border border-slate-800">
-          <span class="text-[10px] px-2 py-0.5 rounded font-bold uppercase" style="background-color: ${node.color}25; color: ${node.color}; border: 1px solid ${node.color}60">${node.group}</span>
-          <h4 class="text-sm font-bold text-white mt-1.5">${node.label}</h4>
-          <p class="text-[11px] font-mono text-slate-400 mt-0.5">ID: ${node.id}</p>
+    function showNodeProperties(node) {
+      const container = document.getElementById('node-inspector-content');
+      container.innerHTML = `
+        <div class="space-y-2">
+          <div>
+            <span class="text-[10px] uppercase font-bold text-slate-500">Label</span>
+            <span class="block font-semibold text-slate-200 mt-0.5">${node.group || 'Node'}</span>
+          </div>
+          <div>
+            <span class="text-[10px] uppercase font-bold text-slate-500">Identifier</span>
+            <span class="block font-mono-code text-blue-400 break-all text-[11px] mt-0.5">${node.id}</span>
+          </div>
+          <div class="pt-2 border-t border-appborder">
+            <span class="text-[10px] uppercase font-bold text-slate-500 block mb-1">Properties</span>
+            <pre class="bg-appinput p-2 rounded border border-appborder text-[10px] text-slate-300 font-mono-code overflow-x-auto custom-scrollbar">${JSON.stringify(node.properties || {}, null, 2)}</pre>
+          </div>
         </div>
-        ${propsHtml}
       `;
     }
 
-    function searchGraphNodes(query) {
-      if (!networkInstance || !query.trim()) return;
-      const lower = query.toLowerCase();
-      const match = currentGraphNodes.find(n => n.label.toLowerCase().includes(lower) || n.id.toLowerCase().includes(lower));
-      if (match) {
-        networkInstance.focus(match.id, { scale: 1.2, animation: { duration: 600 } });
-        showNodeDetails(match);
-      }
-    }
+    function filterGraphNodes() {
+      const query = document.getElementById('graph-search-input').value.toLowerCase().trim();
+      if (!visNetwork) return;
 
-    function togglePhysics(state) {
-      if (networkInstance) {
-        networkInstance.setOptions({ physics: { enabled: state } });
-        document.getElementById('btn-physics-on').className = state ? 'px-2.5 py-1 text-xs rounded bg-sky-600 text-white font-medium' : 'px-2.5 py-1 text-xs rounded bg-slate-800 text-slate-400 font-medium';
-        document.getElementById('btn-physics-off').className = !state ? 'px-2.5 py-1 text-xs rounded bg-sky-600 text-white font-medium' : 'px-2.5 py-1 text-xs rounded bg-slate-800 text-slate-400 font-medium';
-      }
-    }
-
-    function fitGraph() {
-      if (networkInstance) networkInstance.fit({ animation: { duration: 500 } });
-    }
-
-    async function renderProgressiveCharts() {
-      try {
-        const res = await fetch('/api/progressive');
-        const data = await res.json();
-        if (!data.timeline) return;
-
-        const tbody = document.getElementById('progressive-table-body');
-        tbody.innerHTML = '';
-        data.timeline.forEach(step => {
-          const friendlyName = FRIENDLY_NAMES[step.binary_name + '_bad_flow.json'] || step.binary_name;
-          const friendlyCwe = CWE_FRIENDLY[step.detected_cwe] || step.detected_cwe;
-          tbody.innerHTML += `
-            <tr class="hover:bg-slate-800/40 transition">
-              <td class="py-2.5 px-3 font-mono font-bold text-sky-400">#${step.step}</td>
-              <td class="py-2.5 px-3 font-medium text-slate-200">${friendlyName}</td>
-              <td class="py-2.5 px-3"><span class="px-2 py-0.5 rounded bg-red-950/80 text-red-300 border border-red-800 font-semibold">${friendlyCwe}</span></td>
-              <td class="py-2.5 px-3 font-mono">${(step.llm_confidence * 100).toFixed(0)}%</td>
-              <td class="py-2.5 px-3 font-mono font-semibold text-sky-400">${step.kg_evidence_score.toFixed(2)}</td>
-              <td class="py-2.5 px-3 font-mono font-bold text-emerald-400">${step.final_triage_score.toFixed(2)}</td>
-              <td class="py-2.5 px-3 font-mono text-slate-400">${step.post_analysis_nodes} items</td>
-            </tr>
-          `;
+      if (!query) {
+        visNetwork.setData({
+          nodes: new vis.DataSet(allGraphNodes),
+          edges: new vis.DataSet(allGraphEdges)
         });
-
-        const labels = data.timeline.map(t => `Scan ${t.step}`);
-        const nodesData = data.timeline.map(t => t.post_analysis_nodes);
-        const edgesData = data.timeline.map(t => t.post_analysis_edges);
-        const scoresData = data.timeline.map(t => t.final_triage_score);
-        const evidData = data.timeline.map(t => t.kg_evidence_score);
-
-        if (growthChartInstance) growthChartInstance.destroy();
-        const ctx1 = document.getElementById('growthChart').getContext('2d');
-        growthChartInstance = new Chart(ctx1, {
-          type: 'line',
-          data: {
-            labels: labels,
-            datasets: [
-              { label: 'Security Patterns Stored', data: nodesData, borderColor: '#38bdf8', backgroundColor: 'rgba(56, 189, 248, 0.1)', fill: true, tension: 0.3 },
-              { label: 'Connected Rules', data: edgesData, borderColor: '#818cf8', backgroundColor: 'transparent', borderDash: [4, 4], tension: 0.3 }
-            ]
-          },
-          options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: { legend: { labels: { color: '#94a3b8' } } },
-            scales: {
-              x: { ticks: { color: '#64748b' }, grid: { color: '#1e293b' } },
-              y: { ticks: { color: '#64748b' }, grid: { color: '#1e293b' } }
-            }
-          }
-        });
-
-        if (scoreChartInstance) scoreChartInstance.destroy();
-        const ctx2 = document.getElementById('scoreChart').getContext('2d');
-        scoreChartInstance = new Chart(ctx2, {
-          type: 'bar',
-          data: {
-            labels: labels,
-            datasets: [
-              { label: 'Overall Threat Score', data: scoresData, backgroundColor: '#10b981' },
-              { label: 'Security Memory Grounding', data: evidData, backgroundColor: '#0ea5e9' }
-            ]
-          },
-          options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: { legend: { labels: { color: '#94a3b8' } } },
-            scales: {
-              x: { ticks: { color: '#64748b' }, grid: { color: '#1e293b' } },
-              y: { min: 0, max: 1.0, ticks: { color: '#64748b' }, grid: { color: '#1e293b' } }
-            }
-          }
-        });
-      } catch (e) {
-        console.error('Error rendering progressive charts:', e);
+        return;
       }
+
+      const filtered = allGraphNodes.filter(n => 
+        (n.label && n.label.toLowerCase().includes(query)) ||
+        (n.id && n.id.toLowerCase().includes(query))
+      );
+
+      visNetwork.setData({
+        nodes: new vis.DataSet(filtered),
+        edges: new vis.DataSet(allGraphEdges)
+      });
     }
 
-    // Modal Controls
+    function resetGraphView() {
+      if (visNetwork) visNetwork.fit();
+    }
+
     function openApiKeyModal() {
-      document.getElementById('api-key-modal').classList.remove('hidden');
+      document.getElementById('modal-apikey').classList.remove('hidden');
     }
 
     function closeApiKeyModal() {
-      document.getElementById('api-key-modal').classList.add('hidden');
+      document.getElementById('modal-apikey').classList.add('hidden');
     }
 
-    function openAdvancedModal() {
-      document.getElementById('advanced-modal').classList.remove('hidden');
-    }
-
-    function closeAdvancedModal() {
-      document.getElementById('advanced-modal').classList.add('hidden');
-    }
-
-    async function saveApiKeyFromModal() {
-      const key = document.getElementById('modal-api-key-input').value.trim();
+    async function saveApiKey() {
+      const key = document.getElementById('input-api-key').value.trim();
       if (!key) {
-        alert('Please enter a valid API key.');
+        alert("Please enter a valid API key.");
         return;
       }
 
       try {
         const res = await fetch('/api/settings/apikey', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ api_key: key })
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({api_key: key}),
         });
         const data = await res.json();
-        if (res.ok) {
-          alert(`✅ ${data.message}`);
+        if (data.success) {
+          alert(data.message || "API key saved successfully.");
           closeApiKeyModal();
-          document.getElementById('modal-api-key-input').value = '';
-          updateCloudBadge(data.provider);
+          loadModels();
         } else {
-          alert(`❌ Error: ${data.detail}`);
+          alert("Failed to configure API key.");
         }
       } catch (e) {
-        alert('Failed to save API key.');
-      }
-    }
-
-    function updateCloudBadge(provider) {
-      const badge = document.getElementById('ollama-status-badge');
-      const text = document.getElementById('llm-status-text');
-      badge.className = 'px-3 py-1 rounded-full bg-purple-950/70 border border-purple-800 flex items-center space-x-1.5 text-purple-300';
-      text.innerText = `AI: Cloud Active (${provider.toUpperCase()})`;
-      document.getElementById('api-key-btn-text').innerText = 'API Active';
-    }
-
-    async function checkCloudStatus() {
-      try {
-        const res = await fetch('/api/models');
-        const data = await res.json();
-        if (data.cloud) {
-          updateCloudBadge(data.cloud.provider);
-        }
-      } catch (e) {}
-    }
-
-    function refreshAll() {
-      loadStats();
-      loadGraph();
-      loadFlowsList();
-      renderProgressiveCharts();
-      checkCloudStatus();
-    }
-
-    document.addEventListener('DOMContentLoaded', () => {
-      refreshAll();
-    });
-  </script>
-
-  <!-- Cloud API Key Configuration Modal -->
-  <div id="api-key-modal" class="hidden fixed inset-0 z-50 bg-black/75 flex items-center justify-center p-4">
-    <div class="bg-darkcard border border-darkborder rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4">
-      <div class="flex items-center justify-between pb-3 border-b border-darkborder">
-        <h3 class="text-sm font-bold text-white flex items-center">
-          <i class="fa-solid fa-cloud-bolt text-sky-400 mr-2"></i>
-          Connect Cloud AI Model
-        </h3>
-        <button onclick="closeApiKeyModal()" class="text-slate-400 hover:text-white"><i class="fa-solid fa-times"></i></button>
-      </div>
-      <p class="text-xs text-slate-300 leading-relaxed">
-        Paste your cloud API key below (supports <strong>Groq</strong> <code class="text-sky-300">gsk_...</code>, <strong>Google Gemini</strong> <code class="text-amber-300">AIza...</code>, or <strong>OpenAI</strong> <code class="text-emerald-300">sk-...</code>).
-      </p>
-      <div class="p-3 bg-slate-900 rounded-lg border border-slate-800 text-[11px] text-emerald-400 flex items-start space-x-2">
-        <i class="fa-solid fa-shield-halved text-sm mt-0.5"></i>
-        <span><strong>Automatic Local Fallback:</strong> If the token quota is exhausted, rate limited, or internet drops, FirmGraph AI automatically switches back to your local Ollama model seamlessly.</span>
-      </div>
-      <div>
-        <label class="block text-xs font-semibold text-slate-300 mb-1">API Key:</label>
-        <input type="password" id="modal-api-key-input" placeholder="Paste your API key here..." class="w-full bg-slate-950 border border-darkborder rounded-lg p-2.5 text-xs text-slate-200 focus:outline-none focus:border-sky-500 font-mono">
-      </div>
-      <div class="flex justify-end space-x-2 pt-2">
-        <button onclick="closeApiKeyModal()" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium rounded-lg">Cancel</button>
-        <button onclick="saveApiKeyFromModal()" class="px-4 py-1.5 bg-sky-600 hover:bg-sky-500 text-white text-xs font-bold rounded-lg shadow flex items-center space-x-1.5">
-          <i class="fa-solid fa-check"></i>
-          <span>Save &amp; Activate</span>
-        </button>
-      </div>
-    </div>
-  </div>
-
-  <!-- Advanced Developer Tools Modal -->
-  <div id="advanced-modal" class="hidden fixed inset-0 z-50 bg-black/75 flex items-center justify-center p-4">
-    <div class="bg-darkcard border border-darkborder rounded-2xl max-w-2xl w-full p-6 shadow-2xl space-y-4">
-      <div class="flex items-center justify-between pb-3 border-b border-darkborder">
-        <h3 class="text-sm font-bold text-white flex items-center">
-          <i class="fa-solid fa-terminal text-amber-400 mr-2"></i>
-          Developer Tools &amp; Database Console
-        </h3>
-        <button onclick="closeAdvancedModal()" class="text-slate-400 hover:text-white"><i class="fa-solid fa-times"></i></button>
-      </div>
-      <p class="text-xs text-slate-300">
-        Directly query the Neo4j database or add custom dangerous functions:
-      </p>
-
-      <div>
-        <label class="block text-xs font-semibold text-slate-300 mb-1">Direct Database Query (Cypher):</label>
-        <textarea id="cypher-query-input" rows="2" class="w-full bg-slate-950 font-mono text-xs text-sky-300 border border-darkborder rounded-lg p-2.5 focus:outline-none focus:border-sky-500">MATCH (api:API)-[r:ASSOCIATED_WITH]->(c:CWE) RETURN api.name AS api, c.id AS cwe LIMIT 10</textarea>
-      </div>
-      <div class="flex items-center justify-between">
-        <button onclick="runAdvancedCypher()" class="px-3.5 py-1.5 bg-amber-600 hover:bg-amber-500 text-white font-bold text-xs rounded-lg flex items-center space-x-1.5">
-          <i class="fa-solid fa-play"></i>
-          <span>Run Query</span>
-        </button>
-        <span id="cypher-status-text" class="text-xs font-mono text-slate-400"></span>
-      </div>
-      <div id="cypher-results-container" class="overflow-x-auto max-h-48 custom-scrollbar bg-slate-950 rounded-lg p-2.5 border border-darkborder text-xs">
-        <p class="text-slate-500 italic">Click "Run Query" to see database records.</p>
-      </div>
-    </div>
-  </div>
-
-  <script>
-    async function runAdvancedCypher() {
-      const query = document.getElementById('cypher-query-input').value.trim();
-      const statusText = document.getElementById('cypher-status-text');
-      const container = document.getElementById('cypher-results-container');
-      statusText.innerText = 'Executing...';
-      try {
-        const res = await fetch('/api/cypher/run', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ query: query })
-        });
-        const data = await res.json();
-        if (res.ok) {
-          statusText.innerText = `${data.count} record(s) in ${data.elapsed_ms}ms`;
-          if (data.rows.length === 0) {
-            container.innerHTML = '<p class="text-slate-400 italic">Query returned 0 rows.</p>';
-            return;
-          }
-          const keys = Object.keys(data.rows[0]);
-          let ths = keys.map(k => `<th class="py-1.5 px-2 text-slate-400 font-semibold">${k}</th>`).join('');
-          let trs = data.rows.map(row => {
-            let tds = keys.map(k => {
-              const val = typeof row[k] === 'object' ? JSON.stringify(row[k]) : row[k];
-              return `<td class="py-1 px-2 text-slate-200 font-mono text-[11px]">${val}</td>`;
-            }).join('');
-            return `<tr class="border-b border-slate-900">${tds}</tr>`;
-          }).join('');
-          container.innerHTML = `<table class="w-full text-left"><thead>${ths}</thead><tbody>${trs}</tbody></table>`;
-        } else {
-          statusText.innerText = 'Error';
-          container.innerHTML = `<p class="text-rose-400 font-mono">${data.detail}</p>`;
-        }
-      } catch (e) {
-        statusText.innerText = 'Network Error';
+        alert("Error saving API key: " + e);
       }
     }
   </script>
+
 </body>
 </html>
